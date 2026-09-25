@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from "@nestjs/common";
 import {
   ApiBody,
   ApiCreatedResponse,
@@ -8,12 +15,14 @@ import {
 import {
   createSessionSchema,
   submitActionSchema,
+  sessionStateSchema,
   type CreateSessionDto,
   type SessionStateDto,
   type SubmitActionDto,
 } from "@vsm/api-contracts";
 
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { openApiSchema } from "../common/openapi-schema";
 import { SessionsService } from "./sessions.service";
 
 @ApiTags("sessions")
@@ -22,19 +31,11 @@ export class SessionsController {
   constructor(private readonly sessions: SessionsService) {}
 
   @Post()
-  @ApiBody({
-    schema: {
-      type: "object",
-      required: ["scenarioId"],
-      properties: {
-        scenarioId: { type: "string", example: "boarding_no_ticket" },
-        mode: { type: "string", enum: ["training", "assessment"] },
-        difficulty: { type: "integer", minimum: 1, maximum: 3 },
-        seed: { type: "integer", minimum: 0 },
-      },
-    },
+  @ApiBody({ schema: openApiSchema(createSessionSchema) })
+  @ApiCreatedResponse({
+    description: "Смена создана",
+    schema: openApiSchema(sessionStateSchema),
   })
-  @ApiCreatedResponse({ description: "Смена создана" })
   create(
     @Body(new ZodValidationPipe(createSessionSchema)) input: CreateSessionDto,
   ): SessionStateDto {
@@ -42,27 +43,24 @@ export class SessionsController {
   }
 
   @Get(":sessionId")
-  @ApiOkResponse({ description: "Текущее состояние смены" })
-  getById(@Param("sessionId") sessionId: string): SessionStateDto {
+  @ApiOkResponse({
+    description: "Текущее состояние смены",
+    schema: openApiSchema(sessionStateSchema),
+  })
+  getById(
+    @Param("sessionId", new ParseUUIDPipe()) sessionId: string,
+  ): SessionStateDto {
     return this.sessions.getById(sessionId);
   }
 
   @Post(":sessionId/actions")
-  @ApiBody({
-    schema: {
-      type: "object",
-      required: [
-        "idempotencyKey",
-        "actionId",
-        "kind",
-        "durationMinutes",
-        "clientTimestamp",
-      ],
-    },
+  @ApiBody({ schema: openApiSchema(submitActionSchema) })
+  @ApiCreatedResponse({
+    description: "Действие применено к смене",
+    schema: openApiSchema(sessionStateSchema),
   })
-  @ApiCreatedResponse({ description: "Действие применено к смене" })
   applyAction(
-    @Param("sessionId") sessionId: string,
+    @Param("sessionId", new ParseUUIDPipe()) sessionId: string,
     @Body(new ZodValidationPipe(submitActionSchema)) action: SubmitActionDto,
   ): SessionStateDto {
     return this.sessions.applyAction(sessionId, action);

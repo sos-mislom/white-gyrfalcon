@@ -25,4 +25,20 @@ describe("API contracts", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("does not let the caller set action duration or inject extra state", () => {
+    const command = {
+      idempotencyKey: crypto.randomUUID(),
+      actionId: "wait",
+      clientTimestamp: new Date().toISOString(),
+    };
+    expect(submitActionSchema.safeParse(command).success).toBe(true);
+    expect(
+      submitActionSchema.safeParse({ ...command, durationMinutes: 0.1 })
+        .success,
+    ).toBe(false);
+    expect(
+      createSessionSchema.safeParse({ scenarioId: "invented" }).success,
+    ).toBe(false);
+  });
 });

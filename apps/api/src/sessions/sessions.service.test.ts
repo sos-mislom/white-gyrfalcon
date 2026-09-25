@@ -17,8 +17,6 @@ describe("SessionsService", () => {
     const next = service.applyAction(session.id, {
       idempotencyKey: randomUUID(),
       actionId: "ask_for_ticket",
-      kind: "dialogue",
-      durationMinutes: 1,
       clientTimestamp: new Date().toISOString(),
     });
 

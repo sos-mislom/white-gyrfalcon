@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Белый кречет — учебная смена",
   description: "Тренажёр проводника высокоскоростного поезда",
   manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg" },
 };
 
 export const viewport: Viewport = {

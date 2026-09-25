@@ -34,4 +34,5 @@ models/
 Thumbs.db
 *.log
 npm-debug.log*
-
+.playwright-mcp/
+__pycache__/

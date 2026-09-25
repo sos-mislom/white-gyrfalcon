@@ -5,7 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --hostname 0.0.0.0",
-    "lint": "..\\..\\node_modules\\.bin\\eslint.cmd .",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js .",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },

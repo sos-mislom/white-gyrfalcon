@@ -28,21 +28,17 @@ export const actionKindSchema = z.enum([
 ]);
 export type ActionKind = z.infer<typeof actionKindSchema>;
 
-export const createSessionSchema = z.object({
-  scenarioId: z.string().trim().min(1).max(80),
+export const createSessionSchema = z.strictObject({
+  scenarioId: z.literal("boarding_no_ticket"),
   mode: sessionModeSchema.default("training"),
   difficulty: z.number().int().min(1).max(3).default(1),
-  seed: z.number().int().nonnegative().optional(),
+  seed: z.number().int().min(0).max(2_147_483_647).optional(),
 });
 export type CreateSessionDto = z.infer<typeof createSessionSchema>;
 
-export const submitActionSchema = z.object({
+export const submitActionSchema = z.strictObject({
   idempotencyKey: z.string().uuid(),
   actionId: z.string().trim().min(1).max(80),
-  kind: actionKindSchema,
-  durationMinutes: z.number().positive().max(15),
-  targetLocationId: z.string().trim().min(1).max(80).optional(),
-  freeText: z.string().trim().max(1_000).optional(),
   clientTimestamp: z.string().datetime({ offset: true }),
 });
 export type SubmitActionDto = z.infer<typeof submitActionSchema>;
@@ -68,8 +64,13 @@ export const scoreStateSchema = z.object({
 export type ScoreStateDto = z.infer<typeof scoreStateSchema>;
 
 export const sessionEventSchema = z.object({
-  id: z.string().uuid(),
-  type: z.enum(["session_started", "action_applied", "incident_escalated"]),
+  id: z.string(),
+  type: z.enum([
+    "session_started",
+    "action_applied",
+    "incident_escalated",
+    "session_finished",
+  ]),
   atMinute: z.number().nonnegative(),
   message: z.string(),
 });
@@ -87,6 +88,23 @@ export const sessionStateSchema = z.object({
   incidents: z.array(incidentStateSchema),
   events: z.array(sessionEventSchema),
   appliedIdempotencyKeys: z.array(z.string().uuid()),
+  appliedActions: z.array(
+    z.object({
+      key: z.string().uuid(),
+      actionId: z.string(),
+      clientTimestamp: z.string(),
+    }),
+  ),
+  completedActionIds: z.array(z.string()),
+  passengerReply: z.string(),
+  outcome: z.enum(["active", "resolved", "failed"]),
+  availableActions: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      durationMinutes: z.number().positive(),
+    }),
+  ),
 });
 export type SessionStateDto = z.infer<typeof sessionStateSchema>;
 

@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-import { sessionStateSchema, type SessionStateDto } from "@vsm/api-contracts";
+import {
+  sessionStateSchema,
+  type SessionStateDto,
+  type SubmitActionDto,
+} from "@vsm/api-contracts";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 export default function HomePage() {
   const [session, setSession] = useState<SessionStateDto | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const pendingAction = useRef<SubmitActionDto | null>(null);
+  const [canRetryAction, setCanRetryAction] = useState(false);
 
   async function startSession() {
+    setCanRetryAction(false);
     setStatus("loading");
     try {
       const response = await fetch(`${apiUrl}/sessions`, {
@@ -20,7 +27,6 @@ export default function HomePage() {
           scenarioId: "boarding_no_ticket",
           mode: "training",
           difficulty: 1,
-          seed: 42,
         }),
       });
       if (!response.ok) throw new Error("API rejected session creation");
@@ -31,23 +37,26 @@ export default function HomePage() {
     }
   }
 
-  async function applyAction() {
+  async function applyAction(actionId?: string) {
     if (!session) return;
+    if (!pendingAction.current && actionId)
+      pendingAction.current = {
+        idempotencyKey: crypto.randomUUID(),
+        actionId,
+        clientTimestamp: new Date().toISOString(),
+      };
+    if (!pendingAction.current) return;
+    setCanRetryAction(true);
     setStatus("loading");
     try {
       const response = await fetch(`${apiUrl}/sessions/${session.id}/actions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          idempotencyKey: crypto.randomUUID(),
-          actionId: "ask_for_ticket",
-          kind: "dialogue",
-          durationMinutes: 1,
-          clientTimestamp: new Date().toISOString(),
-        }),
+        body: JSON.stringify(pendingAction.current),
       });
       if (!response.ok) throw new Error("API rejected action");
       setSession(sessionStateSchema.parse(await response.json()));
+      pendingAction.current = null;
       setStatus("idle");
     } catch {
       setStatus("error");
@@ -71,17 +80,25 @@ export default function HomePage() {
 
       <section className="briefing" aria-labelledby="briefing-title">
         <p className="eyebrow">Рейс ВСМ · Москва — Санкт-Петербург</p>
-        <h2 id="briefing-title">Посадка заканчивается через три минуты</h2>
+        <h2 id="briefing-title">Списание есть, билета нет</h2>
         <p>
           Пассажир показывает списание с карты, но действительного билета в
-          системе нет. Начните смену и проверьте сквозной контракт клиента и
-          API.
+          системе нет. Помогите ему разобраться, соблюдая правила посадки. Время
+          идёт только при выборе действия. На ситуацию отведено 10 учебных
+          минут.
         </p>
       </section>
 
       {status === "error" && (
         <div className="error" role="alert">
-          API недоступен. Проверьте, что сервер запущен на порту 3100.
+          Не удалось получить ответ сервера.
+          {canRetryAction ? (
+            <button type="button" onClick={() => applyAction()}>
+              Повторить отправку того же действия
+            </button>
+          ) : (
+            " Попробуйте начать смену ещё раз."
+          )}
         </div>
       )}
 
@@ -97,27 +114,66 @@ export default function HomePage() {
 
           <dl className="metrics">
             <div>
-              <dt>Безопасность</dt>
-              <dd>{session.scores.safety}</dd>
+              <dt>Процедура</dt>
+              <dd>{session.scores.procedure}</dd>
             </div>
             <div>
               <dt>Сервис</dt>
               <dd>{session.scores.service}</dd>
             </div>
             <div>
-              <dt>Фаза инцидента</dt>
-              <dd>{session.incidents[0]?.phase ?? "—"}</dd>
+              <dt>Общение</dt>
+              <dd>{session.scores.communication}</dd>
             </div>
           </dl>
 
-          <button
-            className="primary-action"
-            type="button"
-            onClick={applyAction}
-            disabled={status === "loading"}
-          >
-            {status === "loading" ? "Применяем…" : "Попросить предъявить билет"}
-          </button>
+          <p className="passenger-reply" role="status">
+            {session.passengerReply}
+          </p>
+          <div className="action-list" aria-busy={status === "loading"}>
+            {session.availableActions.map((action) => (
+              <button
+                className="scenario-action"
+                type="button"
+                key={action.id}
+                onClick={() => applyAction(action.id)}
+                disabled={status === "loading" || status === "error"}
+              >
+                {action.label} <span>{action.durationMinutes} мин</span>
+              </button>
+            ))}
+          </div>
+          {session.outcome !== "active" && (
+            <section aria-labelledby="result-title">
+              <h3 id="result-title">
+                {session.outcome === "resolved"
+                  ? "Ситуация решена"
+                  : "Есть что разобрать"}
+              </h3>
+              <p>
+                Управление временем: {session.scores.timeManagement}/100. Это
+                учебная оценка по правилам, не заключение о квалификации.
+              </p>
+              <button
+                className="primary-action"
+                type="button"
+                onClick={startSession}
+                disabled={status === "loading"}
+              >
+                Новая попытка
+              </button>
+            </section>
+          )}
+          <details className="event-log" open={session.outcome !== "active"}>
+            <summary>Разбор действий</summary>
+            <ol>
+              {session.events.map((event) => (
+                <li key={event.id}>
+                  <time>{event.atMinute} мин</time> — {event.message}
+                </li>
+              ))}
+            </ol>
+          </details>
         </section>
       ) : (
         <button

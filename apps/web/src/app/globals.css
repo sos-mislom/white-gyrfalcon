@@ -24,6 +24,60 @@ button {
   font: inherit;
 }
 
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.passenger-reply {
+  padding: 1rem 0;
+  line-height: 1.5;
+  font-size: 1.125rem;
+}
+
+.action-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.scenario-action {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+  min-height: 3rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.scenario-action span {
+  flex: none;
+  color: var(--muted);
+}
+.scenario-action:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+.scenario-action:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.event-log {
+  margin-top: 1.5rem;
+  line-height: 1.5;
+}
+.event-log summary {
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+.event-log ol {
+  padding-left: 1.25rem;
+}
+.event-log li {
+  margin-bottom: 0.5rem;
+}
+
 .shell {
   width: min(100%, 48rem);
   min-height: 100dvh;
