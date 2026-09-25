@@ -1,11 +1,11 @@
 :root {
-  --ink: #12222f;
-  --muted: #5d6971;
-  --paper: #f4f0e8;
-  --surface: #fffdf8;
-  --line: #d7d2c8;
-  --signal: #d84b35;
-  --focus: #126782;
+  --ink: #000;
+  --muted: #000;
+  --paper: #fff;
+  --surface: #fff;
+  --line: #000;
+  --signal: #000;
+  --focus: #000;
   color-scheme: light;
 }
 
@@ -22,6 +22,7 @@ body {
 
 button {
   font: inherit;
+  border-radius: 0;
 }
 
 button:focus-visible,
@@ -99,8 +100,8 @@ summary:focus-visible {
   width: 2.75rem;
   height: 2.75rem;
   place-items: center;
-  background: var(--ink);
-  color: white;
+  background: var(--paper);
+  color: var(--ink);
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -118,8 +119,8 @@ h1 {
 
 h2 {
   margin-bottom: 0.75rem;
-  font-size: clamp(1.5rem, 6vw, 2.25rem);
-  line-height: 1.1;
+  font-size: 1.25rem;
+  line-height: 1.4;
 }
 
 .eyebrow {
@@ -127,8 +128,7 @@ h2 {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: normal;
 }
 
 .connection {
@@ -196,14 +196,14 @@ h2 {
   min-height: 3.25rem;
   padding: 0.75rem 1rem;
   border: 2px solid var(--ink);
-  background: var(--ink);
-  color: white;
+  background: var(--paper);
+  color: var(--ink);
   cursor: pointer;
   font-weight: 700;
 }
 
 .primary-action:hover:not(:disabled) {
-  background: #243d4e;
+  background: #eee;
 }
 
 .primary-action:focus-visible {
@@ -220,7 +220,7 @@ h2 {
   margin: 1rem 0;
   padding: 0.875rem 1rem;
   border-left: 4px solid var(--signal);
-  background: #fff3f0;
+  background: var(--paper);
 }
 
 @media (min-width: 48rem) {
