@@ -1,6 +1,7 @@
 "use client";
 import { useTraining } from "../training/use-training";
 import { OfflineStatus } from "../training/offline-status";
+import { FreeformInput } from "../training/freeform-input";
 
 const syncLabels = {
   pending: "Сохранено на устройстве. Ожидает отправки на сервер.",
@@ -13,11 +14,18 @@ const syncLabels = {
 export default function HomePage() {
   const training = useTraining();
   const { session, ready, busy, error } = training;
-  const disabled = !ready || busy || Boolean(error);
+  const disabled =
+    !ready ||
+    busy ||
+    Boolean(error) ||
+    Boolean(training.record?.pendingFreeform);
+  const feedback = training.record?.lastFreeform;
+  const latestIsFreeform =
+    session?.appliedActions.at(-1)?.key === feedback?.command.idempotencyKey;
   return (
     <main className="shell">
       <h1>Тренажёр проводника</h1>
-      <p>Фаза 2 · Локальная учебная смена</p>
+      <p>Фаза 3 · Ситуация, свободный ответ и AI-разбор</p>
       <OfflineStatus />
       {ready && training.record && (
         <div className="sync-status">
@@ -49,6 +57,10 @@ export default function HomePage() {
           </div>
           <dl className="metrics">
             <div>
+              <dt>Безопасность</dt>
+              <dd>{session.scores.safety}</dd>
+            </div>
+            <div>
               <dt>Процедура</dt>
               <dd>{session.scores.procedure}</dd>
             </div>
@@ -62,12 +74,24 @@ export default function HomePage() {
             </div>
           </dl>
           <p className="passenger-reply" role="status">
-            {session.passengerReply}
+            {latestIsFreeform && feedback
+              ? feedback.actor.reply
+              : session.passengerReply}
           </p>
           <p>
             Лояльность пассажира: {session.passengerLoyalty}. Это отдельный
             показатель, не оценка вашей квалификации.
           </p>
+          {(session.outcome === "active" || feedback) && (
+            <FreeformInput
+              busy={busy}
+              active={session.outcome === "active"}
+              pending={training.record?.pendingFreeform}
+              error={training.aiError}
+              feedback={feedback}
+              onSubmit={training.freeform}
+            />
+          )}
           <div className="action-list" aria-busy={busy}>
             {session.availableActions.map((action) => (
               <button

@@ -1,4 +1,31 @@
 import { describe, expect, it } from "vitest";
+import { submitFreeformActionSchema, nluAnalysisSchema } from "./index";
+
+it("accepts only bounded freeform input and structured NLU, never model scores", () => {
+  const input = {
+    sessionId: crypto.randomUUID(),
+    freeformText: "  Не пущу без билета  ",
+    clientTimestamp: "2026-09-26T00:00:00Z",
+  };
+  expect(submitFreeformActionSchema.parse(input).freeformText).toBe(
+    "Не пущу без билета",
+  );
+  expect(
+    submitFreeformActionSchema.safeParse({ ...input, score: 100 }).success,
+  ).toBe(false);
+  expect(
+    submitFreeformActionSchema.safeParse({
+      ...input,
+      freeformText: "я".repeat(501),
+    }).success,
+  ).toBe(false);
+  expect(
+    nluAnalysisSchema.safeParse({
+      matchedActionId: "explain_rules",
+      confidence: 2,
+    }).success,
+  ).toBe(false);
+});
 
 import {
   createSessionSchema,

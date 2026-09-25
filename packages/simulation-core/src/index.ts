@@ -9,6 +9,8 @@ import type {
 import { ENGINE_VERSION } from "@vsm/api-contracts";
 import { resolveD20 } from "./d20";
 export { resolveD20 } from "./d20";
+export { boardingContext } from "./boarding-context";
+export { allowedConsequences, BOARDING_SOURCE } from "./consequences";
 
 // No Node imports: these same rules can execute in a phone browser.
 const ACTIONS = [
@@ -54,6 +56,7 @@ export class SimulationError extends Error {
 export function createSession(
   input: CreateSessionDto,
   sessionId: string = globalThis.crypto.randomUUID(),
+  engineVersion: SessionStateDto["engineVersion"] = ENGINE_VERSION,
 ): SessionStateDto {
   if (input.scenarioId !== "boarding_no_ticket")
     throw new SimulationError("unknown_scenario");
@@ -68,7 +71,7 @@ export function createSession(
   ];
   return {
     id: sessionId,
-    engineVersion: ENGINE_VERSION,
+    engineVersion,
     scenarioId: input.scenarioId,
     mode: input.mode,
     difficulty: input.difficulty,
@@ -259,6 +262,12 @@ export function applyAction(
           70,
           "Списание не подтверждает наличие действительного билета",
         );
+        if (state.engineVersion === "boarding-3")
+          penalty(
+            "safety",
+            70,
+            "Нарушен контроль допуска: посадка без действительного билета",
+          );
         next.outcome = "failed";
         next.passengerReply =
           "Вы разрешили посадку без действительного проездного документа.";
@@ -346,8 +355,8 @@ export function mergeJournal(
   current?: SessionStateDto,
 ): SessionStateDto {
   if (
-    journal.engineVersion !== ENGINE_VERSION ||
-    (current && current.engineVersion !== ENGINE_VERSION)
+    !["boarding-2", ENGINE_VERSION].includes(journal.engineVersion) ||
+    (current && current.engineVersion !== journal.engineVersion)
   )
     throw new SimulationError("engine_version_mismatch");
   if (
@@ -364,7 +373,8 @@ export function mergeJournal(
       current.difficulty !== journal.setup.difficulty)
   )
     throw new SimulationError("session_setup_conflict");
-  let state = current ?? createSession(journal.setup, id);
+  let state =
+    current ?? createSession(journal.setup, id, journal.engineVersion);
   const shared = Math.min(state.appliedActions.length, journal.commands.length);
   for (let index = 0; index < shared; index++) {
     const stored = state.appliedActions[index]!;

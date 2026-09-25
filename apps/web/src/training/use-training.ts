@@ -26,6 +26,7 @@ export function useTraining() {
     ...snapshot,
     start: () => store.start(),
     act: (id: string) => store.act(id),
+    freeform: (text: string) => store.freeform(text),
     syncNow: store.sync,
   };
 }

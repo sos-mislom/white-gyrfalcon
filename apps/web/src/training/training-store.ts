@@ -1,6 +1,7 @@
 import {
   ENGINE_VERSION,
   sessionStateSchema,
+  freeformActionResultSchema,
   type SessionStateDto,
 } from "@vsm/api-contracts";
 import {
@@ -23,6 +24,7 @@ export interface TrainingSnapshot {
   ready: boolean;
   busy: boolean;
   error: string | null;
+  aiError: string | null;
   sync: SyncStatus;
 }
 export const EMPTY: TrainingSnapshot = {
@@ -31,6 +33,7 @@ export const EMPTY: TrainingSnapshot = {
   ready: false,
   busy: false,
   error: null,
+  aiError: null,
   sync: "pending",
 };
 
@@ -77,7 +80,12 @@ export class TrainingStore {
   }
 
   async start() {
-    if (this.snapshot.busy || !this.snapshot.ready || this.snapshot.error)
+    if (
+      this.snapshot.busy ||
+      !this.snapshot.ready ||
+      this.snapshot.error ||
+      this.snapshot.record?.pendingFreeform
+    )
       return;
     this.publish({ busy: true });
     try {
@@ -118,7 +126,7 @@ export class TrainingStore {
 
   async act(actionId: string) {
     const { record, session, busy, error } = this.snapshot;
-    if (!record || !session || busy || error) return;
+    if (!record || !session || busy || error || record.pendingFreeform) return;
     this.publish({ busy: true });
     try {
       const command = {
@@ -149,8 +157,113 @@ export class TrainingStore {
     void this.sync();
   }
 
+  async freeform(text: string) {
+    let { record } = this.snapshot;
+    if (
+      !record ||
+      this.snapshot.busy ||
+      this.snapshot.error ||
+      this.snapshot.session?.outcome !== "active"
+    )
+      return;
+    if (!navigator.onLine) {
+      this.publish({
+        aiError: "Для AI нужна сеть. Явные кнопки работают без неё.",
+      });
+      return;
+    }
+    this.publish({ busy: true, aiError: null });
+    const api = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+    try {
+      if (!record.pendingFreeform) {
+        record = await saveSession(
+          {
+            ...record,
+            pendingFreeform: {
+              sessionId: record.id,
+              freeformText: text.trim(),
+              clientTimestamp: new Date().toISOString(),
+            },
+          },
+          record.revision,
+        );
+        this.publish({ record });
+      }
+      // The API must see the exact preceding journal before interpreting this answer.
+      const syncResponse = await fetch(`${api}/sessions/${record.id}/sync`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(record.journal),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!syncResponse.ok) throw new Error("sync_unavailable");
+      const response = await fetch(
+        `${api}/sessions/${record.id}/action-freeform`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "if-match": String(record.journal.commands.length),
+          },
+          body: JSON.stringify(record.pendingFreeform),
+          signal: AbortSignal.timeout(100000),
+        },
+      );
+      if ([422, 503].includes(response.status)) {
+        record = await saveSession(
+          { ...record, pendingFreeform: undefined },
+          record.revision,
+        );
+        this.publish({
+          record,
+          aiError:
+            response.status === 422
+              ? "AI не уверен в намерении. Уточните фразу или выберите действие кнопкой. Ход не применён."
+              : "AI недоступен. Выберите явное действие — ход и баллы не изменены.",
+        });
+        return;
+      }
+      if (!response.ok) throw new Error("freeform_unconfirmed");
+      const result = freeformActionResultSchema.parse(await response.json());
+      const journal = {
+        ...record.journal,
+        commands: [...record.journal.commands, result.command],
+      };
+      const expected = replaySession(record.id, journal);
+      if (
+        JSON.stringify(sessionStateSchema.parse(expected)) !==
+        JSON.stringify(result.session)
+      )
+        throw new Error("freeform_result_conflict");
+      record = await saveSession(
+        {
+          ...record,
+          journal,
+          pendingFreeform: undefined,
+          lastFreeform: result,
+          syncedCount: journal.commands.length,
+        },
+        record.revision,
+      );
+      this.publish({ record, session: expected, sync: "synced" });
+    } catch {
+      this.publish({
+        aiError:
+          "Ответ не подтверждён. Текст сохранён. Повторите отправку — ход не применится дважды. Не начинайте другую попытку до сверки.",
+      });
+    } finally {
+      this.publish({ busy: false });
+    }
+  }
+
   sync = async () => {
-    if (this.syncing || this.stopped || !this.snapshot.ready) return;
+    if (
+      this.syncing ||
+      this.stopped ||
+      !this.snapshot.ready ||
+      this.snapshot.record?.pendingFreeform
+    )
+      return;
     if (!navigator.onLine) {
       this.publish({ sync: "pending" });
       return;
@@ -160,7 +273,9 @@ export class TrainingStore {
     try {
       // Reload the queue after each batch: actions may be saved while a request is in flight.
       for (;;) {
-        const pending = await pendingSessions();
+        const pending = (await pendingSessions()).filter(
+          (item) => !item.pendingFreeform,
+        );
         if (!pending.length) {
           this.publish({ sync: "synced" });
           break;

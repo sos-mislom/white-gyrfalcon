@@ -43,10 +43,11 @@ export const submitActionSchema = z.strictObject({
 });
 export type SubmitActionDto = z.infer<typeof submitActionSchema>;
 
-export const ENGINE_VERSION = "boarding-2" as const;
+export const ENGINE_VERSION = "boarding-3" as const;
+export const engineVersionSchema = z.enum(["boarding-2", ENGINE_VERSION]);
 export const syncSessionSchema = z
   .strictObject({
-    engineVersion: z.literal(ENGINE_VERSION),
+    engineVersion: engineVersionSchema,
     setup: createSessionSchema.extend({
       seed: z.number().int().min(0).max(2_147_483_647),
     }),
@@ -116,9 +117,42 @@ export const checkResultSchema = z.object({
 });
 export type CheckResultDto = z.infer<typeof checkResultSchema>;
 
+export const submitFreeformActionSchema = z.strictObject({
+  sessionId: z.string().uuid(),
+  freeformText: z.string().trim().min(1).max(500),
+  clientTimestamp: z.string().datetime({ offset: true }),
+});
+export type SubmitFreeformActionDto = z.infer<
+  typeof submitFreeformActionSchema
+>;
+
+export const nluAnalysisSchema = z.strictObject({
+  matchedActionId: z.string().min(1).max(80),
+  confidence: z.number().min(0).max(1),
+  markers: z.strictObject({
+    polite: z.boolean(),
+    empathy: z.boolean(),
+    rude: z.boolean(),
+    safetyViolation: z.boolean(),
+  }),
+  explanation: z.string().min(1).max(700),
+});
+export type NluAnalysisDto = z.infer<typeof nluAnalysisSchema>;
+
+export const allowedConsequenceSchema = z.strictObject({
+  id: z.string().min(1).max(80),
+  description: z.string().min(1).max(700),
+});
+export type AllowedConsequenceDto = z.infer<typeof allowedConsequenceSchema>;
+export const actorResponseSchema = z.strictObject({
+  consequenceId: z.string().min(1).max(80),
+  reply: z.string().min(1).max(500),
+});
+export type ActorResponseDto = z.infer<typeof actorResponseSchema>;
+
 export const sessionStateSchema = z.object({
   id: z.string().uuid(),
-  engineVersion: z.literal(ENGINE_VERSION),
+  engineVersion: engineVersionSchema,
   scenarioId: z.string(),
   mode: sessionModeSchema,
   difficulty: z.number().int().min(1).max(3),
@@ -150,6 +184,20 @@ export const sessionStateSchema = z.object({
   ),
 });
 export type SessionStateDto = z.infer<typeof sessionStateSchema>;
+
+export const freeformActionResultSchema = z.strictObject({
+  session: sessionStateSchema,
+  command: submitActionSchema,
+  analysis: nluAnalysisSchema.nullable(),
+  allowedConsequences: z.array(allowedConsequenceSchema).min(1).max(4),
+  actor: actorResponseSchema,
+  actorFallback: z.boolean(),
+  source: z.string(),
+  execution: z.literal("server"),
+});
+export type FreeformActionResultDto = z.infer<
+  typeof freeformActionResultSchema
+>;
 
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),

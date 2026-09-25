@@ -5,7 +5,12 @@ import {
 } from "@nestjs/common";
 import { readFileSync } from "node:fs";
 import { Pool } from "pg";
-import { sessionStateSchema, type SessionStateDto } from "@vsm/api-contracts";
+import {
+  sessionStateSchema,
+  freeformActionResultSchema,
+  type FreeformActionResultDto,
+  type SessionStateDto,
+} from "@vsm/api-contracts";
 import { SessionRepository } from "./session.repository";
 
 export class PostgresSessionRepository
@@ -40,9 +45,22 @@ export class PostgresSessionRepository
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
     )`);
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS vsm_freeform_receipts (
+      key uuid PRIMARY KEY, session_id uuid NOT NULL REFERENCES vsm_sessions(id),
+      result jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+    )`);
   }
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
+  }
+  async getFreeform(key: string): Promise<FreeformActionResultDto | undefined> {
+    const result = await this.pool.query<{ result: unknown }>(
+      "SELECT result FROM vsm_freeform_receipts WHERE key = $1",
+      [key],
+    );
+    return result.rows[0]
+      ? freeformActionResultSchema.parse(result.rows[0].result)
+      : undefined;
   }
   async ready(): Promise<boolean> {
     try {
@@ -64,6 +82,7 @@ export class PostgresSessionRepository
   async mutate(
     id: string,
     change: (state: SessionStateDto | undefined) => SessionStateDto,
+    receipt?: FreeformActionResultDto,
   ): Promise<SessionStateDto> {
     const client = await this.pool.connect();
     try {
@@ -84,6 +103,11 @@ export class PostgresSessionRepository
         ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = now()`,
         [id, JSON.stringify(next)],
       );
+      if (receipt)
+        await client.query(
+          "INSERT INTO vsm_freeform_receipts(key, session_id, result) VALUES ($1, $2, $3::jsonb)",
+          [receipt.command.idempotencyKey, id, JSON.stringify(receipt)],
+        );
       await client.query("COMMIT");
       return next;
     } catch (error) {

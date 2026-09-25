@@ -32,9 +32,10 @@ export class SessionsService {
   }
 
   applyAction(id: string, action: SubmitActionDto): Promise<SessionStateDto> {
-    return this.mutate(id, (state) =>
-      applyAction(this.required(state), action),
-    );
+    return this.mutate(id, (state) => {
+      const current = this.required(state);
+      return applyAction(current, action);
+    });
   }
 
   sync(id: string, journal: SyncSessionDto): Promise<SessionStateDto> {

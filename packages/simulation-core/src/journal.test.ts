@@ -2,6 +2,31 @@ import { describe, expect, it } from "vitest";
 import { ENGINE_VERSION, type SyncSessionDto } from "@vsm/api-contracts";
 import { mergeJournal, replaySession } from "./index";
 
+it("keeps old saved rules readable while new boarding checks reduce safety", () => {
+  const journal: SyncSessionDto = {
+    engineVersion: "boarding-2",
+    setup: {
+      scenarioId: "boarding_no_ticket",
+      mode: "training",
+      difficulty: 1,
+      seed: 42,
+    },
+    commands: [
+      {
+        idempotencyKey: crypto.randomUUID(),
+        actionId: "allow_boarding",
+        clientTimestamp: "2026-09-26T00:00:00Z",
+      },
+    ],
+  };
+  const id = crypto.randomUUID();
+  expect(replaySession(id, journal).scores.safety).toBe(100);
+  expect(
+    replaySession(id, { ...journal, engineVersion: ENGINE_VERSION }).scores
+      .safety,
+  ).toBe(30);
+});
+
 const createJournal = (): SyncSessionDto => ({
   engineVersion: ENGINE_VERSION,
   setup: {

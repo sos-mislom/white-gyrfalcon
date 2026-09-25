@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   sessionStateSchema,
   syncSessionSchema,
+  submitFreeformActionSchema,
+  freeformActionResultSchema,
   type SessionStateDto,
 } from "@vsm/api-contracts";
 import { replaySession } from "@vsm/simulation-core";
@@ -12,6 +14,8 @@ export const savedSessionSchema = z
     revision: z.number().int().nonnegative(),
     journal: syncSessionSchema,
     syncedCount: z.number().int().min(-1),
+    pendingFreeform: submitFreeformActionSchema.optional(),
+    lastFreeform: freeformActionResultSchema.optional(),
   })
   .refine((record) => record.syncedCount <= record.journal.commands.length);
 export type SavedSession = z.infer<typeof savedSessionSchema>;

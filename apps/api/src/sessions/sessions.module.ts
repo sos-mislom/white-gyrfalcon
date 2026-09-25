@@ -7,11 +7,15 @@ import {
   SessionRepository,
 } from "./session.repository";
 import { PostgresSessionRepository } from "./postgres-session.repository";
+import { FreeformService } from "../ai/freeform.service";
+import { AiAdapterService } from "../ai/ai-adapter.service";
 
 @Module({
   controllers: [SessionsController],
   providers: [
     SessionsService,
+    FreeformService,
+    AiAdapterService,
     {
       provide: SessionRepository,
       useFactory: () => {
