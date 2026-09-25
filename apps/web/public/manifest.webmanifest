@@ -1,0 +1,19 @@
+{
+  "name": "Белый кречет — учебная смена",
+  "short_name": "Белый кречет",
+  "description": "Тренажёр проводника высокоскоростного поезда",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f0e8",
+  "theme_color": "#12222f",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
+

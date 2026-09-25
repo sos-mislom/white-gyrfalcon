@@ -1,0 +1,29 @@
+{
+  "name": "white-gyrfalcon-training",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Локальный симулятор смены проводника ВСМ",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.15.0",
+    "npm": ">=11.0.0"
+  },
+  "scripts": {
+    "build": "npm run build -w @vsm/api-contracts && npm run build -w @vsm/simulation-core && npm run build -w @vsm/api && npm run build -w @vsm/web",
+    "build:packages": "npm run build -w @vsm/api-contracts && npm run build -w @vsm/simulation-core",
+    "dev": "npm run build:packages && concurrently -n api,web -c yellow,cyan \"npm run dev -w @vsm/api\" \"npm run dev -w @vsm/web\"",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
+    "format": "prettier --write \"{apps,packages}/**/*.{ts,tsx,css,json}\" \"*.{json,md}\"",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3"
+  }
+}
