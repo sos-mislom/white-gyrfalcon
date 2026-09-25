@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "node ../../scripts/prepare-ai-runtime.mjs",
+    "predev": "node ../../scripts/prepare-ai-runtime.mjs",
     "build": "next build && node ../../scripts/build-offline.mjs",
     "dev": "next dev --hostname 0.0.0.0",
     "lint": "node ../../node_modules/eslint/bin/eslint.js .",
@@ -11,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@huggingface/transformers": "4.3.0",
     "@vsm/api-contracts": "0.1.0",
     "@vsm/simulation-core": "0.1.0",
     "next": "16.3.6",
