@@ -1,0 +1,22 @@
+import groovy.json.JsonSlurper
+plugins { id 'com.android.application' }
+def accessFile = rootProject.file('../../.private/ops/public-access.json')
+if (!accessFile.isFile()) throw new GradleException('Run scripts/prepare-public.py first')
+def standUrl = new JsonSlurper().parse(accessFile).baseUrl
+if (!(standUrl ==~ /https:\/\/[a-zA-Z0-9.-]+/)) throw new GradleException('Expected an HTTPS origin without path')
+android {
+    namespace 'ru.vsm.trainer'
+    compileSdk 36
+    buildToolsVersion '35.0.0'
+    defaultConfig {
+        applicationId 'ru.vsm.trainer.stand'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.3.0-stand'
+        buildConfigField 'String', 'STAND_URL', '"' + standUrl + '"'
+    }
+    buildFeatures { buildConfig true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    buildTypes { debug { debuggable true }; release { minifyEnabled false } }
+}

@@ -38,3 +38,8 @@ npm-debug.log*
 __pycache__/
 apps/web/public/sw.js
 apps/web/public/ai-runtime/
+apps/android/.gradle/
+apps/android/**/build/
+apps/android/local.properties
+*.apk
+*.keystore
