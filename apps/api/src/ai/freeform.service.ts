@@ -87,7 +87,7 @@ export class FreeformService {
       });
     const standard =
       state.engineVersion === "boarding-4"
-        ? standardAnalysis(input.freeformText)
+        ? standardAnalysis(input.freeformText, state.completedActionIds)
         : undefined;
     let analysis;
     try {
@@ -172,6 +172,7 @@ export class FreeformService {
             {
               employee_speech: input.freeformText,
               markers: analysis.markers,
+              previousPassengerReply: state.passengerReply,
             },
             onDraft,
           ),

@@ -35,15 +35,13 @@ export function VoiceInput({
     return () => window.speechSynthesis.cancel();
   }, [reply, replyKey, enabled]);
   return (
-    <div>
-      <p>
-        Голос — по желанию. Silero определяет речь на устройстве. Распознавание
-        и озвучивание выполняет браузер: его поставщик может обрабатывать звук
-        на сервере. Не произносите персональные данные. Для перебивания лучше
-        наушники.
-      </p>
+    <div className="vn-voice">
       <button
         type="button"
+        className="vn-microphone"
+        aria-label={enabled ? "Выключить микрофон" : "Включить микрофон"}
+        aria-pressed={enabled}
+        aria-describedby="voice-privacy"
         onClick={async () => {
           if (enabled) {
             setEnabled(false);
@@ -75,9 +73,13 @@ export function VoiceInput({
           }
         }}
       >
-        {enabled ? "Выключить голос" : "Разрешить голосовой режим"}
+        <span aria-hidden="true">🎙️</span>
       </button>
-      {status && <p role="status">{status}</p>}
+      {status && (
+        <p className="vn-voice-status" role="status">
+          {status}
+        </p>
+      )}
     </div>
   );
 }

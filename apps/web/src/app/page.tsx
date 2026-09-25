@@ -1,158 +1,125 @@
 "use client";
+import { useEffect, useRef } from "react";
+import { memoryAwareReply } from "@vsm/simulation-core";
 import { useTraining } from "../training/use-training";
-import { OfflineStatus } from "../training/offline-status";
 import { FreeformInput } from "../training/freeform-input";
-
-const syncLabels = {
-  pending: "Сохранено на устройстве. Ожидает отправки на сервер.",
-  syncing: "Сохранено на устройстве. Сверяем журнал с сервером…",
-  synced: "Все сохранённые смены подтверждены сервером.",
-  conflict:
-    "Сервер обнаружил несовпадение журнала или версии правил. Локальные данные сохранены; требуется разбор, повторная отправка их не перезапишет.",
-};
+import {
+  PassengerScene,
+  passengerExpression,
+} from "../training/passenger-scene";
+import { Debriefing } from "../training/debriefing";
+import { useNovelViewport } from "../training/use-novel-viewport";
+import "./novel.css";
 
 export default function HomePage() {
   const training = useTraining();
-  const { session, ready, busy, error } = training;
-  const disabled =
-    !ready ||
-    busy ||
-    Boolean(error) ||
-    Boolean(training.record?.pendingFreeform);
+  const { session, busy, ready, error } = training;
+  const screen = useNovelViewport();
+  const resultTitle = useRef<HTMLHeadingElement>(null);
+  const finished = Boolean(session && session.outcome !== "active");
+  useEffect(() => {
+    if (finished) resultTitle.current?.focus();
+  }, [finished]);
   const feedback = training.record?.lastFreeform;
-  const latestIsFreeform =
-    session?.appliedActions.at(-1)?.key === feedback?.command.idempotencyKey;
+  const latest =
+    session?.appliedActions.at(-1)?.key === feedback?.command.idempotencyKey
+      ? feedback
+      : undefined;
+  const reply =
+    latest?.actor.reply ??
+    (session
+      ? (memoryAwareReply(session) ?? session.passengerReply)
+      : "Деньги списались, а билет так и не пришёл. Вы поможете мне разобраться?");
+  const remaining = session
+    ? Math.max(0, 12 - 2 * session.difficulty - session.currentTimeMinutes)
+    : 10;
+  const clock = `${Math.floor(remaining)}:${remaining % 1 ? "30" : "00"}`;
   return (
-    <main className="shell">
-      <h1>Тренажёр проводника</h1>
-      <p>Фаза 3 · Ситуация, свободный ответ и AI-разбор</p>
-      <OfflineStatus />
-      {ready && training.record && (
-        <div className="sync-status">
-          <p role="status">{syncLabels[training.sync]}</p>
-          <button
-            type="button"
-            onClick={training.syncNow}
-            disabled={training.sync === "syncing"}
+    <main
+      className="vn-screen"
+      ref={screen}
+      aria-label="Учебная смена проводника"
+    >
+      <h1 className="vn-sr-only">Белый кречет — учебная смена</h1>
+      <PassengerScene
+        expression={passengerExpression(session, latest)}
+        finished={finished}
+      />
+      <header className="vn-header">
+        <span className="vn-route">
+          Белый кречет<span>Москва — Санкт-Петербург</span>
+        </span>
+        {!finished && (
+          <div
+            className="vn-clock"
+            aria-label={`До отправления ${clock}. Учебное время${busy ? ", на паузе" : ""}`}
           >
-            Синхронизировать
-          </button>
-        </div>
-      )}
-      {error && <p role="alert">{error}</p>}
-      {!ready && <p role="status">Читаем сохранённую смену…</p>}
-      <section className="briefing" aria-labelledby="briefing-title">
-        <h2 id="briefing-title">Списание есть, билета нет</h2>
-        <p>
-          Пассажир показывает списание с карты, но действительного билета нет.
-          Помогите разобраться, соблюдая правила посадки. На ситуацию отведено
-          10 учебных минут. Ходы и оценка рассчитываются на этом устройстве.
-        </p>
-      </section>
-      {session ? (
-        <section aria-labelledby="session-title">
-          <div className="session-heading">
-            <h2 id="session-title">Пассажир без билета</h2>
-            <time>{session.currentTimeMinutes} мин</time>
+            <span>До отправления</span>
+            <time>{clock}</time>
+            {busy && <small>Время на паузе</small>}
           </div>
-          <dl className="metrics">
-            <div>
-              <dt>Безопасность</dt>
-              <dd>{session.scores.safety}</dd>
-            </div>
-            <div>
-              <dt>Процедура</dt>
-              <dd>{session.scores.procedure}</dd>
-            </div>
-            <div>
-              <dt>Сервис</dt>
-              <dd>{session.scores.service}</dd>
-            </div>
-            <div>
-              <dt>Общение</dt>
-              <dd>{session.scores.communication}</dd>
-            </div>
-          </dl>
-          <p className="passenger-reply" role="status">
-            {latestIsFreeform && feedback
-              ? feedback.actor.reply
-              : session.passengerReply}
-          </p>
-          <p>
-            Лояльность пассажира: {session.passengerLoyalty}. Это отдельный
-            показатель, не оценка вашей квалификации.
-          </p>
-          {(session.outcome === "active" || feedback) && (
-            <FreeformInput
-              busy={busy}
-              active={session.outcome === "active"}
-              pending={training.record?.pendingFreeform}
-              error={training.aiError}
-              feedback={feedback}
-              onSubmit={training.freeform}
-              draftReply={training.draftReply}
-              reactionMs={training.reactionMs}
-            />
-          )}
-          <div className="action-list" aria-busy={busy}>
-            {session.availableActions.map((action) => (
-              <button
-                key={action.id}
-                className="scenario-action"
-                type="button"
-                disabled={disabled}
-                onClick={() => training.act(action.id)}
-              >
-                {action.label} <span>{action.durationMinutes} мин</span>
-              </button>
-            ))}
-          </div>
-          {session.outcome !== "active" && (
-            <section aria-labelledby="result-title">
-              <h3 id="result-title">
-                {session.outcome === "resolved"
-                  ? "Ситуация решена"
-                  : "Есть что разобрать"}
-              </h3>
-              <p>
-                Управление временем: {session.scores.timeManagement}/100.
-                Учебная оценка по правилам, не заключение о квалификации.
-              </p>
-              <button
-                className="primary-action"
-                type="button"
-                onClick={training.start}
-                disabled={disabled}
-              >
-                Новая попытка
-              </button>
-            </section>
-          )}
-          <details className="event-log" open={session.outcome !== "active"}>
-            <summary>Разбор действий</summary>
-            <ol>
-              {session.events.map((event) => (
-                <li key={event.id}>
-                  <time>{event.atMinute} мин</time> — {event.message}
-                </li>
-              ))}
-            </ol>
-          </details>
-        </section>
+        )}
+      </header>
+      {finished && session ? (
+        <Debriefing
+          session={session}
+          reply={reply}
+          onRestart={training.start}
+          disabled={busy || Boolean(error)}
+          titleRef={resultTitle}
+        />
       ) : (
-        <button
-          className="primary-action"
-          type="button"
-          disabled={disabled}
-          onClick={training.start}
-        >
-          Начать учебную смену
-        </button>
+        <section className="vn-dialogue" aria-labelledby="passenger-name">
+          <h2 className="vn-name" id="passenger-name">
+            Сергей <span>(Пассажир)</span>
+          </h2>
+          <div className="vn-dialogue-content">
+            <div
+              className="vn-speech"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {training.draftReply && (
+                <small className="vn-draft">
+                  Сергей отвечает · реплика уточняется
+                </small>
+              )}
+              <p>{training.draftReply ?? reply}</p>
+            </div>
+            {session ? (
+              <FreeformInput
+                busy={busy}
+                active={!finished}
+                pending={training.record?.pendingFreeform}
+                error={training.aiError}
+                feedback={latest}
+                onSubmit={training.freeform}
+                disabled={Boolean(error)}
+              />
+            ) : (
+              <div className="vn-intro">
+                <p>
+                  Разберитесь в ситуации и помогите пассажиру, соблюдая правила
+                  посадки.
+                </p>
+                <button
+                  className="vn-primary"
+                  disabled={!ready || busy || Boolean(error)}
+                  onClick={training.start}
+                >
+                  {ready ? "Начать учебную смену" : "Открываем смену…"}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
       )}
-      <p className="storage-note">
-        Сохранение привязано к этому браузеру и адресу. Не очищайте данные сайта
-        до синхронизации; приватный режим не подходит для хранения смен.
-      </p>
+      {error && (
+        <p className="vn-fatal" role="alert">
+          {error}
+        </p>
+      )}
     </main>
   );
 }

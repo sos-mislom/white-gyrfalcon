@@ -1,4 +1,5 @@
 import type { ActorResponseDto, SessionStateDto } from "@vsm/api-contracts";
+import { memoryAwareReply } from "@vsm/simulation-core";
 
 export function currentEmotionalCheck(state: SessionStateDto) {
   return state.outcome === "active" &&
@@ -34,7 +35,7 @@ export function actorReference(state: SessionStateDto, speech: string): string {
     desk
   )
     return `Понимаю, без билета нельзя. Мне нужно обратиться в кассу №${desk}?`;
-  return state.passengerReply;
+  return memoryAwareReply(state) ?? state.passengerReply;
 }
 
 export function actorIsGrounded(
@@ -42,6 +43,22 @@ export function actorIsGrounded(
   actor: ActorResponseDto,
   speech: string,
 ): boolean {
+  if (state.outcome === "active") {
+    if (
+      state.completedActionIds.includes("explain_rules") &&
+      /почему[^.!?]{0,50}не (?:пуска|пуст|разреш)|разве[^.!?]{0,40}списани|как (?:же )?мне уехать/iu.test(
+        actor.reply,
+      )
+    )
+      return false;
+    if (
+      state.completedActionIds.includes("offer_help") &&
+      /куда (?:же |мне )?(?:идти|пойти|обрат|обращ)|где (?:же |находится )?касса|к кому (?:мне )?обрат/iu.test(
+        actor.reply,
+      )
+    )
+      return false;
+  }
   const check = currentEmotionalCheck(state);
   if (check) {
     const anchors = {

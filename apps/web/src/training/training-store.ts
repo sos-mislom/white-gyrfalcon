@@ -121,7 +121,14 @@ export class TrainingStore {
         },
         null,
       );
-      this.publish({ session, record, sync: "pending" });
+      this.publish({
+        session,
+        record,
+        sync: "pending",
+        aiError: null,
+        draftReply: null,
+        reactionMs: null,
+      });
     } catch {
       this.publish({
         error:
@@ -179,7 +186,7 @@ export class TrainingStore {
     const standard =
       !record.pendingFreeform &&
       this.snapshot.session?.engineVersion === "boarding-4"
-        ? standardAnalysis(text)
+        ? standardAnalysis(text, this.snapshot.session.completedActionIds)
         : undefined;
     if (standard) {
       this.publish({ busy: true, aiError: null, draftReply: null });

@@ -11,6 +11,10 @@ export function useTraining() {
   );
   useEffect(() => {
     void store.initialize();
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
+      // Registration is independent of the now-hidden diagnostic panel.
+      void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => undefined);
+    }
     const sync = () => {
       void store.sync();
     };
@@ -26,8 +30,11 @@ export function useTraining() {
     ...snapshot,
     start: () => store.start(),
     act: (id: string) => store.act(id),
-    freeform: (text: string, interrupted = false) =>
-      store.freeform(text, interrupted),
+    freeform: async (text: string, interrupted = false) => {
+      const before = store.getSnapshot().record?.lastFreeform?.command.idempotencyKey;
+      await store.freeform(text, interrupted);
+      return store.getSnapshot().record?.lastFreeform?.command.idempotencyKey !== before;
+    },
     syncNow: store.sync,
   };
 }

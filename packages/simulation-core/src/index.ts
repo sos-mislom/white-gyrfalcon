@@ -11,6 +11,7 @@ import { resolveD20, resolveEmotionalD20 } from "./d20";
 import { boardingContext } from "./boarding-context";
 export { resolveD20, resolveEmotionalD20 } from "./d20";
 export { standardAnalysis } from "./standard-analysis";
+export { dialogueMemory, memoryAwareReply } from "./dialogue-memory";
 export { boardingContext } from "./boarding-context";
 export {
   allowedConsequences,

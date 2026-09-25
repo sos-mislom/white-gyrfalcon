@@ -3,6 +3,7 @@ import type {
   SessionStateDto,
 } from "@vsm/api-contracts";
 import { boardingContext } from "./boarding-context";
+import { memoryAwareReply } from "./dialogue-memory";
 
 export const BOARDING_SOURCE =
   "Ситуации на борту, ситуация 1, стр. 3; ролевая модель, стр. 2";
@@ -72,7 +73,12 @@ export function allowedConsequences(
       },
     ];
   }
-  return [{ id: "respond_to_current_step", description: state.passengerReply }];
+  return [
+    {
+      id: "respond_to_current_step",
+      description: memoryAwareReply(state) ?? state.passengerReply,
+    },
+  ];
 }
 
 /** Verified response pool. Seeded wording and emotion never change the resolved state. */
@@ -99,6 +105,21 @@ export function standardPassengerReply(
       ? "контактный центр"
       : "указанное вами место";
   const variant = (state.seed + state.appliedActions.length) % 2;
+  const currentCheck =
+    state.appliedActions.at(-1)?.actionId === "offer_help" &&
+    state.events.some(
+      (event) =>
+        event.type === "check_resolved" &&
+        event.atMinute === state.currentTimeMinutes,
+    );
+  const remembered = memoryAwareReply(state);
+  if (
+    remembered &&
+    !currentCheck &&
+    (state.completedActionIds.includes("offer_help") ||
+      last.actionId !== "explain_rules")
+  )
+    return remembered;
   let pool: string[];
   switch (last.actionId) {
     case "ask_for_ticket":
@@ -115,7 +136,15 @@ export function standardPassengerReply(
       break;
     case "offer_help": {
       const check = state.checks.at(-1);
-      if (!check || !state.events.some(event => event.type === "check_resolved" && event.atMinute === state.currentTimeMinutes)) return state.passengerReply;
+      if (
+        !check ||
+        !state.events.some(
+          (event) =>
+            event.type === "check_resolved" &&
+            event.atMinute === state.currentTimeMinutes,
+        )
+      )
+        return state.passengerReply;
       const choices = {
         critical_success: [
           `Большое спасибо за участие! Обращусь в ${destination}.`,

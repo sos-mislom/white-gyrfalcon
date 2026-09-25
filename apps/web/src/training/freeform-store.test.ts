@@ -17,9 +17,62 @@ beforeEach(async () => {
     request.onerror = () => reject(request.error);
   });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 
 describe("freeform client journal", () => {
+  it("freezes game time during 15 seconds of inference, ignores double submit, then charges one action", async () => {
+    const store = new TrainingStore();
+    await store.initialize();
+    await store.start();
+    const before = store.getSnapshot().session!;
+    let finish!: (response: Response) => void;
+    const delayed = new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+    let waiting = false;
+    vi.stubGlobal("navigator", { onLine: true });
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.endsWith("/sync")) return Response.json(before);
+      waiting = true;
+      return delayed;
+    });
+    const pending = store.freeform("Можно уточнить ваш номер заказа?");
+    await vi.waitFor(() => expect(waiting).toBe(true));
+    vi.useFakeTimers();
+    await vi.advanceTimersByTimeAsync(15000);
+    await store.freeform("Покажите билет");
+    expect(store.getSnapshot().busy).toBe(true);
+    expect(store.getSnapshot().session).toEqual(before);
+    vi.useRealTimers();
+    const command = {
+      actionId: "ask_for_ticket",
+      idempotencyKey: crypto.randomUUID(),
+      clientTimestamp: new Date().toISOString(),
+    };
+    const session = applyAction(before, command);
+    finish(
+      Response.json({
+        session,
+        command,
+        analysis: null,
+        allowedConsequences: allowedConsequences(session),
+        actor: {
+          consequenceId: "respond_to_current_step",
+          reply: "Вот мой заказ.",
+        },
+        actorFallback: false,
+        source: BOARDING_SOURCE,
+        execution: "server",
+      }),
+    );
+    await pending;
+    expect(store.getSnapshot().session?.currentTimeMinutes).toBe(1);
+    expect(store.getSnapshot().session?.appliedActions).toHaveLength(1);
+    store.dispose();
+  });
   it("answers standard phrases offline without fetch and retains replayable communication markers", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);

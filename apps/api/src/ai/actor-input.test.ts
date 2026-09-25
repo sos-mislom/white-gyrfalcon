@@ -119,6 +119,11 @@ it("sends heard speech, markers, character and the engine's actual d20 to the ac
     lastCheck: state.checks.at(-1),
     currentCheck: true,
     context: boardingContext(42, 1, state.currentTimeMinutes, input.markers),
+    completedActionIds: ["ask_for_ticket", "explain_rules", "offer_help"],
   });
+  expect(
+    data.dialogueHistory.map((step: { actionId: string }) => step.actionId),
+  ).toEqual(state.completedActionIds);
+  expect(request.messages[0].content).toContain("НЕ спрашивай, куда идти");
   expect(request.messages[0].content).toContain(state.checks.at(-1)!.outcome);
 });

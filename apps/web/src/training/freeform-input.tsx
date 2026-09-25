@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import { VoiceInput } from "./voice-input";
 import type {
   FreeformActionResultDto,
   SubmitFreeformActionDto,
 } from "@vsm/api-contracts";
+import { VoiceInput } from "./voice-input";
 
 export function FreeformInput({
   busy,
@@ -13,128 +13,107 @@ export function FreeformInput({
   error,
   feedback,
   onSubmit,
-  draftReply,
-  reactionMs,
+  disabled,
 }: {
   busy: boolean;
   active: boolean;
   pending?: SubmitFreeformActionDto;
   error: string | null;
   feedback?: FreeformActionResultDto;
-  onSubmit: (text: string, interrupted?: boolean) => Promise<void>;
-  draftReply?: string | null;
-  reactionMs?: number | null;
+  disabled?: boolean;
+  onSubmit: (text: string, interrupted?: boolean) => Promise<boolean>;
 }) {
   const [text, setText] = useState("");
   const [interrupted, setInterrupted] = useState(false);
+  const value = pending?.freeformText ?? text;
+  const send = async (spoken: string, wasInterrupted: boolean) => {
+    if (await onSubmit(spoken, wasInterrupted)) setText(current => current === spoken ? "" : current);
+  };
+  if (!active) return null;
   return (
-    <section aria-labelledby="freeform-title">
-      <h3 id="freeform-title">Ответить своими словами</h3>
-      <p>
-        Стандартные фразы разбираются на устройстве, импровизация — AI на
-        сервере. Не вводите реальные персональные данные. Без AI доступны явные
-        действия ниже.
-      </p>
-      {active && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void onSubmit(pending?.freeformText ?? text, interrupted);
-            setInterrupted(false);
-          }}
-        >
-          <label htmlFor="freeform-text">Ваша реплика пассажиру</label>
-          <textarea
-            id="freeform-text"
-            className="benchmark-report"
-            rows={3}
-            maxLength={500}
-            required
-            disabled={busy || Boolean(pending)}
-            value={pending?.freeformText ?? text}
-            onChange={(event) => setText(event.target.value)}
-          />
-          <button
-            type="submit"
-            className="primary-action"
-            disabled={busy || !(pending?.freeformText ?? text).trim()}
-          >
-            {pending ? "Повторить отправку" : "Ответить"}
-          </button>
-        </form>
-      )}
-      {active && (
+    <div className="vn-composer">
+      <form
+        className="vn-answer"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!value.trim() || busy || disabled) return;
+          void send(value, pending?.interrupted ?? interrupted);
+          setInterrupted(false);
+        }}
+      >
+        <label className="vn-sr-only" htmlFor="freeform-text">
+          Ваш ответ пассажиру
+        </label>
+        <textarea
+          id="freeform-text"
+          rows={2}
+          maxLength={500}
+          required
+          placeholder="Ваш ответ пассажиру…"
+          value={value}
+          disabled={busy || Boolean(pending) || disabled}
+          onChange={(event) => setText(event.target.value)}
+        />
         <VoiceInput
-          busy={busy || Boolean(pending)}
+          busy={busy || Boolean(pending) || Boolean(disabled)}
           reply={feedback?.actor.reply}
           replyKey={feedback?.command.idempotencyKey}
           onText={(spoken, wasInterrupted) => {
             setText(spoken);
             setInterrupted(wasInterrupted);
-            if (!busy && !pending) {
-              void onSubmit(spoken, wasInterrupted);
+            if (!busy && !pending && !disabled) {
+              void send(spoken, wasInterrupted);
               setInterrupted(false);
             }
           }}
         />
-      )}
-      {draftReply && (
-        <div aria-label="Поток реплики">
-          <p>Пассажир отвечает (черновик, исход ещё проверяется):</p>
-          <p>{draftReply}</p>
-        </div>
-      )}
-      {reactionMs != null && (
-        <p>Результат хода: {Math.round(reactionMs)} мс.</p>
-      )}
+        <button
+          className="vn-send"
+          type="submit"
+          aria-label={pending ? "Повторить отправку" : "Отправить ответ"}
+          disabled={busy || !value.trim() || disabled}
+        >
+          <span aria-hidden="true">➤</span>
+        </button>
+      </form>
       {busy && (
-        <p role="status">
-          Обрабатываем ход… Ожидание AI не расходует учебное время.
+        <p className="vn-wait" role="status">
+          Сергей обдумывает ответ… Учебное время на паузе.
         </p>
       )}
-      {error && <p role="alert">{error}</p>}
-      {feedback && (
-        <div>
-          <h3>Почему движок так оценил ответ</h3>
-          <p>
-            {feedback.analysis?.explanation ?? "Сохранённый результат хода."}
-          </p>
-          <p>
-            Действие: {feedback.command.actionId}. Уверенность разбора:{" "}
-            {feedback.analysis
-              ? `${Math.round(feedback.analysis.confidence * 100)}%`
-              : "нет данных"}
-            .
-          </p>
-          {feedback.analysis && (
-            <p>
-              Вежливость: {feedback.analysis.markers.polite ? "да" : "нет"};
-              эмпатия: {feedback.analysis.markers.empathy ? "да" : "нет"};
-              грубость: {feedback.analysis.markers.rude ? "да" : "нет"}. Маркеры
-              — результат разбора речи, нормативные баллы считает движок.
-            </p>
+      {error && (
+        <div className="vn-input-error" role="alert">
+          <p>{error}</p>
+          {!pending && (
+            <small>
+              Без AI работают стандартные фразы: «Покажите билет», «Не пущу без
+              билета», «Обратитесь в кассу №3», «Всего доброго».
+            </small>
           )}
-          <p>
-            Основание: {feedback.source}. Порядок: проверить билет → объяснить
-            ограничение → предложить помощь → завершить разговор.
-          </p>
-          <p>
-            Разрешённое последствие:{" "}
-            {
-              feedback.allowedConsequences.find(
-                (item) => item.id === feedback.actor.consequenceId,
-              )?.description
-            }
-          </p>
-          <p>
-            {feedback.responseMode === "pool"
-              ? "Проверенная реплика движка: модель не вызывалась."
-              : feedback.actorFallback
-                ? "AI-актёр недоступен или предложил недопустимый исход: показан текст движка."
-                : "Реплика сформулирована AI в рамках исхода движка."}
-          </p>
         </div>
       )}
-    </section>
+      <p className="vn-privacy" id="voice-privacy">
+        Голос распознаёт браузер, в том числе онлайн. Не сообщайте личные
+        данные.
+      </p>
+      {feedback?.analysis && (
+        <details className="vn-analysis">
+          <summary>
+            🔍 AI-разбор: {feedback.command.actionId} (эмпатия:{" "}
+            {feedback.analysis.markers.empathy ? "да" : "нет"})
+          </summary>
+          <div>
+            <p>{feedback.analysis.explanation}</p>
+            <p>
+              {feedback.responseMode === "pool"
+                ? "Стандартная фраза: модель не вызывалась."
+                : feedback.actorFallback
+                  ? "Показана проверенная резервная реплика."
+                  : "Реплика модели проверена по исходу движка."}
+            </p>
+          </div>
+        </details>
+      )}
+    </div>
   );
 }

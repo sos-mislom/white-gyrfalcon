@@ -4,7 +4,7 @@ import { MemorySessionRepository } from "../sessions/session.repository";
 import { SessionsService } from "../sessions/sessions.service";
 import { FreeformService } from "./freeform.service";
 import { MockAiAdapter } from "./mock-ai-adapter";
-import { replaySession } from "@vsm/simulation-core";
+import { replaySession, memoryAwareReply } from "@vsm/simulation-core";
 
 async function setup(
   engineVersion: "boarding-3" | "boarding-4" = "boarding-3",
@@ -187,8 +187,26 @@ describe("boarding freeform → NLU → core → allowed actor → persisted res
       t.request("Я не разрешаю посадку без билета"),
     );
     expect(result.actorFallback).toBe(true);
-    expect(result.actor.reply).toBe(result.session.passengerReply);
+    expect(result.actor.reply).toBe(memoryAwareReply(result.session));
     expect(result.session.outcome).toBe("active");
+  });
+
+  it("rejects passenger amnesia after help and sends committed history to the actor", async () => {
+    const t = await setup();
+    for (const actionId of ["ask_for_ticket", "explain_rules", "offer_help"])
+      await t.sessions.applyAction(t.session.id, {
+        actionId,
+        idempotencyKey: randomUUID(),
+        clientTimestamp: "2026-09-26T00:00:00Z",
+      });
+    t.model.actorReply = "Почему меня не пускаете? Куда мне идти?";
+    const result = await t.freeform.submit(
+      t.request("Покажите, пожалуйста, ваш билет"),
+    );
+    expect(result.actorFallback).toBe(true);
+    expect(result.actor.reply).toContain("Успею ли");
+    expect(result.actor.reply).not.toContain("Куда");
+    expect(t.model.lastActorInput?.previousPassengerReply).toBeTruthy();
   });
 
   it("completes the full dialogue and rejects uncertain input without a penalty", async () => {
