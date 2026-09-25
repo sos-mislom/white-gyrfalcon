@@ -38,6 +38,7 @@ npm-debug.log*
 __pycache__/
 apps/web/public/sw.js
 apps/web/public/ai-runtime/
+apps/web/public/voice-runtime/
 apps/android/.gradle/
 apps/android/**/build/
 apps/android/local.properties

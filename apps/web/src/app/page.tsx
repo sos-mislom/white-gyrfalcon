@@ -90,6 +90,8 @@ export default function HomePage() {
               error={training.aiError}
               feedback={feedback}
               onSubmit={training.freeform}
+              draftReply={training.draftReply}
+              reactionMs={training.reactionMs}
             />
           )}
           <div className="action-list" aria-busy={busy}>

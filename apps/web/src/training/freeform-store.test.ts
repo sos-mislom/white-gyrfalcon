@@ -20,6 +20,29 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("freeform client journal", () => {
+  it("answers standard phrases offline without fetch and retains replayable communication markers", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const store = new TrainingStore();
+    await store.initialize();
+    await store.start();
+    for (const text of [
+      "Покажите, пожалуйста, ваш билет",
+      "Я не могу вас посадить без билета, пройдите в кассу №3",
+      "Обратитесь в кассу №3",
+      "Всего доброго",
+    ])
+      await store.freeform(text);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    const saved = (await loadActive())!;
+    expect(saved.lastFreeform?.execution).toBe("local");
+    expect(saved.lastFreeform?.responseMode).toBe("pool");
+    expect(store.getSnapshot().session?.outcome).toBe("resolved");
+    expect(replaySession(saved.id, saved.journal)).toEqual(
+      store.getSnapshot().session,
+    );
+    store.dispose();
+  });
   it("records the server action atomically without putting actor prose in replay", async () => {
     const store = new TrainingStore();
     await store.initialize();
@@ -60,7 +83,7 @@ describe("freeform client journal", () => {
         execution: "server",
       });
     });
-    await store.freeform("Покажите, пожалуйста, ваш билет");
+    await store.freeform("Можно взглянуть на номер вашего заказа?");
     const saved = (await loadActive())!;
     expect(saved.pendingFreeform).toBeUndefined();
     expect(saved.syncedCount).toBe(1);
@@ -81,7 +104,7 @@ describe("freeform client journal", () => {
         ? Response.json(store.getSnapshot().session)
         : Response.json({ code: "ai_unavailable" }, { status: 503 }),
     );
-    await store.freeform("Не пущу без билета");
+    await store.freeform("Давайте разберёмся, где вы покупали билет");
     expect(store.getSnapshot().record?.pendingFreeform).toBeUndefined();
     expect(store.getSnapshot().session?.currentTimeMinutes).toBe(0);
     vi.stubGlobal("navigator", { onLine: false });

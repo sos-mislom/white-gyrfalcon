@@ -7,6 +7,8 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Res,
+  HttpException,
 } from "@nestjs/common";
 import {
   ApiBody,
@@ -27,6 +29,8 @@ import {
   type SubmitActionDto,
   type SyncSessionDto,
 } from "@vsm/api-contracts";
+import type { FastifyReply } from "fastify";
+import type { FreeformStreamEventDto } from "@vsm/api-contracts";
 
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { openApiSchema } from "../common/openapi-schema";
@@ -59,6 +63,70 @@ export class SessionsController {
       input,
       revision === undefined ? undefined : Number(revision),
     );
+  }
+
+  @Post(":sessionId/action-freeform/stream")
+  @ApiBody({ schema: openApiSchema(submitFreeformActionSchema) })
+  @ApiOkResponse({
+    description:
+      "text/event-stream: status, draft (unverified), result (committed), error",
+  })
+  async streamFreeform(
+    @Param("sessionId", new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(submitFreeformActionSchema))
+    input: SubmitFreeformActionDto,
+    @Res() reply: FastifyReply,
+    @Headers("if-match") revision?: string,
+  ) {
+    if (
+      id !== input.sessionId ||
+      (revision !== undefined && !/^\d{1,2}$/.test(revision))
+    )
+      throw new BadRequestException({ code: "invalid_freeform_request" });
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    });
+    let connected = true;
+    const send = (event: FreeformStreamEventDto) => {
+      if (connected && !reply.raw.destroyed)
+        reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+    const heartbeat = setInterval(() => {
+      if (connected) reply.raw.write(": keepalive\n\n");
+    }, 10000);
+    reply.raw.on("close", () => {
+      connected = false;
+      clearInterval(heartbeat);
+    });
+    send({ type: "status", stage: "analyzing" });
+    try {
+      // A disconnected viewer must not cause a second roll on retry. Receipt still commits.
+      const result = await this.freeform.submit(
+        input,
+        revision === undefined ? undefined : Number(revision),
+        (text) => send({ type: "draft", text }),
+      );
+      send({ type: "result", result });
+    } catch (error) {
+      // An unknown storage failure may have committed: retain the client's retry receipt.
+      const status = error instanceof HttpException ? error.getStatus() : 500;
+      send({
+        type: "error",
+        status,
+        code:
+          status === 422
+            ? "ai_intent_uncertain"
+            : status === 409
+              ? "session_changed"
+              : "ai_unavailable",
+      });
+    } finally {
+      clearInterval(heartbeat);
+      if (connected) reply.raw.end();
+    }
   }
 
   @Post()

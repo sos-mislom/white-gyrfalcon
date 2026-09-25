@@ -118,7 +118,7 @@ it("sends heard speech, markers, character and the engine's actual d20 to the ac
     ...input,
     lastCheck: state.checks.at(-1),
     currentCheck: true,
-    context: boardingContext(42, 1),
+    context: boardingContext(42, 1, state.currentTimeMinutes, input.markers),
   });
   expect(request.messages[0].content).toContain(state.checks.at(-1)!.outcome);
 });

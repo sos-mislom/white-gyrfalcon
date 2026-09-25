@@ -6,16 +6,22 @@ import { FreeformService } from "./freeform.service";
 import { MockAiAdapter } from "./mock-ai-adapter";
 import { replaySession } from "@vsm/simulation-core";
 
-async function setup() {
+async function setup(
+  engineVersion: "boarding-3" | "boarding-4" = "boarding-3",
+) {
   const repository = new MemorySessionRepository();
   const sessions = new SessionsService(repository);
   const model = new MockAiAdapter();
   const freeform = new FreeformService(repository, model);
-  const session = await sessions.create({
-    scenarioId: "boarding_no_ticket",
-    difficulty: 1,
-    mode: "training",
-    seed: 42,
+  const session = await sessions.sync(randomUUID(), {
+    engineVersion,
+    commands: [],
+    setup: {
+      scenarioId: "boarding_no_ticket",
+      difficulty: 1,
+      mode: "training",
+      seed: 42,
+    },
   });
   const request = (freeformText: string) => ({
     sessionId: session.id,
@@ -26,6 +32,27 @@ async function setup() {
 }
 
 describe("boarding freeform → NLU → core → allowed actor → persisted result", () => {
+  it("boarding-4 fast path completes a dialogue with no model even during an outage", async () => {
+    const t = await setup("boarding-4");
+    t.model.unavailable = true;
+    t.model.actorUnavailable = true;
+    for (const text of [
+      "Покажите, пожалуйста, ваш билет",
+      "Я не могу вас посадить без билета, пройдите в кассу №3",
+      "Обратитесь в кассу №3",
+      "Всего доброго, до свидания",
+    ]) {
+      const input = t.request(text);
+      const result = await t.freeform.submit(input);
+      expect(result.responseMode).toBe("pool");
+      expect(result.actorFallback).toBe(false);
+      expect(await t.freeform.submit(input)).toEqual(result);
+      if (text.includes("кассу")) expect(result.actor.reply).toContain("№3");
+    }
+    expect(t.model.calls).toBe(0);
+    expect(t.model.lastActorInput).toBeUndefined();
+    expect((await t.sessions.getById(t.session.id)).outcome).toBe("resolved");
+  });
   it("closes a completed case with farewell alone, without an NLU round trip", async () => {
     const t = await setup();
     for (const actionId of ["ask_for_ticket", "explain_rules", "offer_help"])
@@ -39,6 +66,7 @@ describe("boarding freeform → NLU → core → allowed actor → persisted res
     );
     expect(result.analysis?.matchedActionId).toBe("close_conversation");
     expect(result.session.outcome).toBe("resolved");
+    expect(result.responseMode).toBeUndefined(); // Existing boarding-3 clients use a strict DTO.
     expect(t.model.calls).toBe(0);
     expect(t.model.lastActorInput?.employee_speech).toBe(
       "Всего доброго, до свидания",

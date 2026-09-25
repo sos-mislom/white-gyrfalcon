@@ -7,10 +7,16 @@ import type {
   SyncSessionDto,
 } from "@vsm/api-contracts";
 import { ENGINE_VERSION } from "@vsm/api-contracts";
-import { resolveD20 } from "./d20";
-export { resolveD20 } from "./d20";
+import { resolveD20, resolveEmotionalD20 } from "./d20";
+import { boardingContext } from "./boarding-context";
+export { resolveD20, resolveEmotionalD20 } from "./d20";
+export { standardAnalysis } from "./standard-analysis";
 export { boardingContext } from "./boarding-context";
-export { allowedConsequences, BOARDING_SOURCE } from "./consequences";
+export {
+  allowedConsequences,
+  BOARDING_SOURCE,
+  standardPassengerReply,
+} from "./consequences";
 
 // No Node imports: these same rules can execute in a phone browser.
 const ACTIONS = [
@@ -127,6 +133,8 @@ export function applyAction(
     if (
       previous.actionId !== command.actionId ||
       previous.conduct !== command.conduct ||
+      JSON.stringify(previous.communication) !==
+        JSON.stringify(command.communication) ||
       previous.clientTimestamp !== command.clientTimestamp
     )
       throw new SimulationError("idempotency_conflict");
@@ -136,7 +144,7 @@ export function applyAction(
   if (
     command.conduct &&
     (command.actionId !== "dismiss_passenger" ||
-      state.engineVersion !== "boarding-3")
+      state.engineVersion === "boarding-2")
   )
     throw new SimulationError("invalid_conduct");
   const action = ACTIONS.find((item) => item.id === command.actionId);
@@ -149,6 +157,7 @@ export function applyAction(
     actionId: command.actionId,
     clientTimestamp: command.clientTimestamp,
     ...(command.conduct ? { conduct: command.conduct } : {}),
+    ...(command.communication ? { communication: command.communication } : {}),
   });
   const done = (id: string) => state.completedActionIds.includes(id);
   const record = (
@@ -172,6 +181,13 @@ export function applyAction(
     record(`${reason} (−${points})`);
   };
   record(action.label);
+  if (
+    state.engineVersion === "boarding-4" &&
+    command.communication?.interrupted &&
+    command.communication.rude
+  ) {
+    penalty("communication", 10, "Грубое перебивание пассажира");
+  }
   if (done(action.id)) {
     penalty(
       "timeManagement",
@@ -203,14 +219,33 @@ export function applyAction(
             "Направление в кассу без объяснения ограничения",
           );
         {
-          const check = resolveD20(
-            state.seed,
-            state.checks.length,
-            action.id,
-            11 + 2 * state.difficulty,
-            0,
-            done("ask_for_ticket") && done("explain_rules") ? 4 : 0,
-          );
+          const personality = boardingContext(state.seed, state.difficulty);
+          const check =
+            state.engineVersion === "boarding-4"
+              ? resolveEmotionalD20(
+                  state.seed,
+                  state.checks.length,
+                  action.id,
+                  11 + 2 * state.difficulty,
+                  0,
+                  done("ask_for_ticket") && done("explain_rules") ? 4 : 0,
+                  Boolean(
+                    command.communication?.polite &&
+                    command.communication.empathy,
+                  ),
+                  personality.stress > 70 ||
+                    personality.patience < 30 ||
+                    Boolean(command.communication?.rude) ||
+                    !done("explain_rules"),
+                )
+              : resolveD20(
+                  state.seed,
+                  state.checks.length,
+                  action.id,
+                  11 + 2 * state.difficulty,
+                  0,
+                  done("ask_for_ticket") && done("explain_rules") ? 4 : 0,
+                );
           next.checks.push(check);
           const reactions = {
             critical_success: {
@@ -241,7 +276,7 @@ export function applyAction(
           );
           next.passengerReply = reaction.reply;
           record(
-            `Реакция пассажира: d20=${check.roll}, бонус=${check.sopBonus}, итог=${check.total}, DC=${check.dc}, ${check.outcome}. Случайность не меняет профессиональную оценку.`,
+            `Реакция пассажира: ${check.mode ? `${check.mode} [${check.rolls!.join(", ")}] → ` : ""}d20=${check.roll}, бонус=${check.sopBonus}, итог=${check.total}, DC=${check.dc}, ${check.outcome}. Случайность не меняет профессиональную оценку.`,
             "check_resolved",
           );
         }
@@ -270,7 +305,7 @@ export function applyAction(
           70,
           "Списание не подтверждает наличие действительного билета",
         );
-        if (state.engineVersion === "boarding-3")
+        if (state.engineVersion !== "boarding-2")
           penalty(
             "safety",
             70,
@@ -373,7 +408,9 @@ export function mergeJournal(
   current?: SessionStateDto,
 ): SessionStateDto {
   if (
-    !["boarding-2", ENGINE_VERSION].includes(journal.engineVersion) ||
+    !["boarding-2", "boarding-3", ENGINE_VERSION].includes(
+      journal.engineVersion,
+    ) ||
     (current && current.engineVersion !== journal.engineVersion)
   )
     throw new SimulationError("engine_version_mismatch");
@@ -401,6 +438,8 @@ export function mergeJournal(
       stored.key !== command.idempotencyKey ||
       stored.actionId !== command.actionId ||
       stored.conduct !== command.conduct ||
+      JSON.stringify(stored.communication) !==
+        JSON.stringify(command.communication) ||
       stored.clientTimestamp !== command.clientTimestamp
     )
       throw new SimulationError("journal_conflict");

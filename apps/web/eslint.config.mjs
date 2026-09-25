@@ -5,5 +5,5 @@ import nextTypeScript from 'eslint-config-next/typescript';
 export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
-  globalIgnores(['.next/**', 'out/**', 'next-env.d.ts', 'public/sw.js', 'public/ai-runtime/**', 'public/models/**', 'service-worker.template.js']),
+  globalIgnores(['.next/**', 'out/**', 'next-env.d.ts', 'public/sw.js', 'public/ai-runtime/**', 'public/voice-runtime/**', 'public/models/**', 'service-worker.template.js']),
 ]);

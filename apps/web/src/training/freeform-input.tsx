@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { VoiceInput } from "./voice-input";
 import type {
   FreeformActionResultDto,
   SubmitFreeformActionDto,
@@ -12,27 +13,34 @@ export function FreeformInput({
   error,
   feedback,
   onSubmit,
+  draftReply,
+  reactionMs,
 }: {
   busy: boolean;
   active: boolean;
   pending?: SubmitFreeformActionDto;
   error: string | null;
   feedback?: FreeformActionResultDto;
-  onSubmit: (text: string) => Promise<void>;
+  onSubmit: (text: string, interrupted?: boolean) => Promise<void>;
+  draftReply?: string | null;
+  reactionMs?: number | null;
 }) {
   const [text, setText] = useState("");
+  const [interrupted, setInterrupted] = useState(false);
   return (
     <section aria-labelledby="freeform-title">
       <h3 id="freeform-title">Ответить своими словами</h3>
       <p>
-        AI работает на нашем сервере. Не вводите реальные персональные данные.
-        Без AI доступны явные действия ниже.
+        Стандартные фразы разбираются на устройстве, импровизация — AI на
+        сервере. Не вводите реальные персональные данные. Без AI доступны явные
+        действия ниже.
       </p>
       {active && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void onSubmit(pending?.freeformText ?? text);
+            void onSubmit(pending?.freeformText ?? text, interrupted);
+            setInterrupted(false);
           }}
         >
           <label htmlFor="freeform-text">Ваша реплика пассажиру</label>
@@ -55,6 +63,30 @@ export function FreeformInput({
           </button>
         </form>
       )}
+      {active && (
+        <VoiceInput
+          busy={busy || Boolean(pending)}
+          reply={feedback?.actor.reply}
+          replyKey={feedback?.command.idempotencyKey}
+          onText={(spoken, wasInterrupted) => {
+            setText(spoken);
+            setInterrupted(wasInterrupted);
+            if (!busy && !pending) {
+              void onSubmit(spoken, wasInterrupted);
+              setInterrupted(false);
+            }
+          }}
+        />
+      )}
+      {draftReply && (
+        <div aria-label="Поток реплики">
+          <p>Пассажир отвечает (черновик, исход ещё проверяется):</p>
+          <p>{draftReply}</p>
+        </div>
+      )}
+      {reactionMs != null && (
+        <p>Результат хода: {Math.round(reactionMs)} мс.</p>
+      )}
       {busy && (
         <p role="status">
           Обрабатываем ход… Ожидание AI не расходует учебное время.
@@ -68,7 +100,7 @@ export function FreeformInput({
             {feedback.analysis?.explanation ?? "Сохранённый результат хода."}
           </p>
           <p>
-            Действие: {feedback.command.actionId}. Уверенность AI:{" "}
+            Действие: {feedback.command.actionId}. Уверенность разбора:{" "}
             {feedback.analysis
               ? `${Math.round(feedback.analysis.confidence * 100)}%`
               : "нет данных"}
@@ -79,7 +111,7 @@ export function FreeformInput({
               Вежливость: {feedback.analysis.markers.polite ? "да" : "нет"};
               эмпатия: {feedback.analysis.markers.empathy ? "да" : "нет"};
               грубость: {feedback.analysis.markers.rude ? "да" : "нет"}. Маркеры
-              — оценка модели, нормативные баллы считает движок.
+              — результат разбора речи, нормативные баллы считает движок.
             </p>
           )}
           <p>
@@ -95,9 +127,11 @@ export function FreeformInput({
             }
           </p>
           <p>
-            {feedback.actorFallback
-              ? "AI-актёр недоступен или предложил недопустимый исход: показан текст движка."
-              : "Реплика сформулирована AI в рамках исхода движка."}
+            {feedback.responseMode === "pool"
+              ? "Проверенная реплика движка: модель не вызывалась."
+              : feedback.actorFallback
+                ? "AI-актёр недоступен или предложил недопустимый исход: показан текст движка."
+                : "Реплика сформулирована AI в рамках исхода движка."}
           </p>
         </div>
       )}

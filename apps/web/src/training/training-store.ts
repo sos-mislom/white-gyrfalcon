@@ -8,6 +8,10 @@ import {
   applyAction,
   createSession,
   replaySession,
+  standardAnalysis,
+  standardPassengerReply,
+  allowedConsequences,
+  BOARDING_SOURCE,
 } from "@vsm/simulation-core";
 import {
   acknowledge,
@@ -16,6 +20,7 @@ import {
   saveSession,
   type SavedSession,
 } from "./journal-storage";
+import { readFreeformStream, StreamFailure } from "./freeform-stream";
 
 type SyncStatus = "pending" | "syncing" | "synced" | "conflict";
 export interface TrainingSnapshot {
@@ -25,6 +30,8 @@ export interface TrainingSnapshot {
   busy: boolean;
   error: string | null;
   aiError: string | null;
+  draftReply: string | null;
+  reactionMs: number | null;
   sync: SyncStatus;
 }
 export const EMPTY: TrainingSnapshot = {
@@ -34,6 +41,8 @@ export const EMPTY: TrainingSnapshot = {
   busy: false,
   error: null,
   aiError: null,
+  draftReply: null,
+  reactionMs: null,
   sync: "pending",
 };
 
@@ -157,7 +166,8 @@ export class TrainingStore {
     void this.sync();
   }
 
-  async freeform(text: string) {
+  async freeform(text: string, interrupted = false) {
+    const started = performance.now();
     let { record } = this.snapshot;
     if (
       !record ||
@@ -166,13 +176,81 @@ export class TrainingStore {
       this.snapshot.session?.outcome !== "active"
     )
       return;
+    const standard =
+      !record.pendingFreeform &&
+      this.snapshot.session?.engineVersion === "boarding-4"
+        ? standardAnalysis(text)
+        : undefined;
+    if (standard) {
+      this.publish({ busy: true, aiError: null, draftReply: null });
+      try {
+        const command = {
+          idempotencyKey: crypto.randomUUID(),
+          actionId: standard.matchedActionId,
+          clientTimestamp: new Date().toISOString(),
+          communication: {
+            polite: standard.markers.polite,
+            empathy: standard.markers.empathy,
+            rude: standard.markers.rude,
+            ...(interrupted ? { interrupted: true } : {}),
+          },
+        };
+        const next = applyAction(this.snapshot.session!, command);
+        const outcomes = allowedConsequences(next);
+        const result = freeformActionResultSchema.parse({
+          session: next,
+          command,
+          analysis: standard,
+          allowedConsequences: outcomes,
+          actor: {
+            consequenceId: outcomes[0]!.id,
+            reply: standardPassengerReply(next, text)!,
+          },
+          actorFallback: false,
+          source: BOARDING_SOURCE,
+          execution: "local",
+          responseMode: "pool",
+        });
+        record = await saveSession(
+          {
+            ...record,
+            journal: {
+              ...record.journal,
+              commands: [...record.journal.commands, command],
+            },
+            lastFreeform: result,
+          },
+          record.revision,
+        );
+        this.publish({
+          record,
+          session: next,
+          sync: "pending",
+          reactionMs: performance.now() - started,
+        });
+      } catch {
+        this.publish({
+          error:
+            "Быстрый ход не сохранён. Перезагрузите страницу; журнал не удалён.",
+        });
+      } finally {
+        this.publish({ busy: false });
+      }
+      void this.sync();
+      return;
+    }
     if (!navigator.onLine) {
       this.publish({
         aiError: "Для AI нужна сеть. Явные кнопки работают без неё.",
       });
       return;
     }
-    this.publish({ busy: true, aiError: null });
+    this.publish({
+      busy: true,
+      aiError: null,
+      draftReply: null,
+      reactionMs: null,
+    });
     const api = process.env.NEXT_PUBLIC_API_URL ?? "/api";
     try {
       if (!record.pendingFreeform) {
@@ -183,6 +261,7 @@ export class TrainingStore {
               sessionId: record.id,
               freeformText: text.trim(),
               clientTimestamp: new Date().toISOString(),
+              ...(interrupted ? { interrupted: true } : {}),
             },
           },
           record.revision,
@@ -198,7 +277,7 @@ export class TrainingStore {
       });
       if (!syncResponse.ok) throw new Error("sync_unavailable");
       const response = await fetch(
-        `${api}/sessions/${record.id}/action-freeform`,
+        `${api}/sessions/${record.id}/action-freeform/stream`,
         {
           method: "POST",
           headers: {
@@ -224,7 +303,11 @@ export class TrainingStore {
         return;
       }
       if (!response.ok) throw new Error("freeform_unconfirmed");
-      const result = freeformActionResultSchema.parse(await response.json());
+      const result = freeformActionResultSchema.parse(
+        await readFreeformStream(response, (draftReply) =>
+          this.publish({ draftReply }),
+        ),
+      );
       const journal = {
         ...record.journal,
         commands: [...record.journal.commands, result.command],
@@ -245,14 +328,35 @@ export class TrainingStore {
         },
         record.revision,
       );
-      this.publish({ record, session: expected, sync: "synced" });
-    } catch {
+      this.publish({
+        record,
+        session: expected,
+        sync: "synced",
+        draftReply: null,
+        reactionMs: performance.now() - started,
+      });
+    } catch (error) {
+      if (error instanceof StreamFailure && [422, 503].includes(error.status)) {
+        record = await saveSession(
+          { ...record, pendingFreeform: undefined },
+          record.revision,
+        );
+        this.publish({
+          record,
+          aiError:
+            error.status === 422
+              ? "AI не уверен. Уточните фразу или выберите действие кнопкой. Ход не применён."
+              : "AI недоступен. Выберите явное действие — ход и баллы не изменены.",
+          draftReply: null,
+        });
+        return;
+      }
       this.publish({
         aiError:
           "Ответ не подтверждён. Текст сохранён. Повторите отправку — ход не применится дважды. Не начинайте другую попытку до сверки.",
       });
     } finally {
-      this.publish({ busy: false });
+      this.publish({ busy: false, draftReply: null });
     }
   }
 

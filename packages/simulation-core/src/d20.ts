@@ -25,3 +25,30 @@ export function resolveD20(
           : "failure";
   return { actionId, index, roll, dc, skillModifier, sopBonus, total, outcome };
 }
+
+export function resolveEmotionalD20(
+  seed: number,
+  index: number,
+  actionId: string,
+  dc: number,
+  skill: number,
+  sop: number,
+  advantage: boolean,
+  disadvantage: boolean,
+): CheckResultDto {
+  const first = resolveD20(seed, index * 2, actionId, dc, skill, sop);
+  if (advantage === disadvantage)
+    return { ...first, index, rolls: [first.roll], mode: "normal" };
+  const second = resolveD20(seed, index * 2 + 1, actionId, dc, skill, sop);
+  const selected = (
+    advantage ? first.roll >= second.roll : first.roll <= second.roll
+  )
+    ? first
+    : second;
+  return {
+    ...selected,
+    index,
+    rolls: [first.roll, second.roll],
+    mode: advantage ? "advantage" : "disadvantage",
+  };
+}

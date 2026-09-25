@@ -36,16 +36,27 @@ export const createSessionSchema = z.strictObject({
 });
 export type CreateSessionDto = z.infer<typeof createSessionSchema>;
 
+export const communicationSchema = z.strictObject({
+  polite: z.boolean(),
+  empathy: z.boolean(),
+  rude: z.boolean(),
+  interrupted: z.boolean().optional(),
+});
 export const submitActionSchema = z.strictObject({
   idempotencyKey: z.string().uuid(),
   actionId: z.string().trim().min(1).max(80),
   clientTimestamp: z.string().datetime({ offset: true }),
   conduct: z.literal("violent_threat").optional(),
+  communication: communicationSchema.optional(),
 });
 export type SubmitActionDto = z.infer<typeof submitActionSchema>;
 
-export const ENGINE_VERSION = "boarding-3" as const;
-export const engineVersionSchema = z.enum(["boarding-2", ENGINE_VERSION]);
+export const ENGINE_VERSION = "boarding-4" as const;
+export const engineVersionSchema = z.enum([
+  "boarding-2",
+  "boarding-3",
+  ENGINE_VERSION,
+]);
 export const syncSessionSchema = z
   .strictObject({
     engineVersion: engineVersionSchema,
@@ -115,6 +126,8 @@ export const checkResultSchema = z.object({
     "failure",
     "critical_failure",
   ]),
+  rolls: z.array(z.number().int().min(1).max(20)).min(1).max(2).optional(),
+  mode: z.enum(["normal", "advantage", "disadvantage"]).optional(),
 });
 export type CheckResultDto = z.infer<typeof checkResultSchema>;
 
@@ -122,6 +135,7 @@ export const submitFreeformActionSchema = z.strictObject({
   sessionId: z.string().uuid(),
   freeformText: z.string().trim().min(1).max(500),
   clientTimestamp: z.string().datetime({ offset: true }),
+  interrupted: z.boolean().optional(),
 });
 export type SubmitFreeformActionDto = z.infer<
   typeof submitFreeformActionSchema
@@ -172,6 +186,7 @@ export const sessionStateSchema = z.object({
       actionId: z.string(),
       clientTimestamp: z.string(),
       conduct: z.literal("violent_threat").optional(),
+      communication: communicationSchema.optional(),
     }),
   ),
   completedActionIds: z.array(z.string()),
@@ -195,11 +210,27 @@ export const freeformActionResultSchema = z.strictObject({
   actor: actorResponseSchema,
   actorFallback: z.boolean(),
   source: z.string(),
-  execution: z.literal("server"),
+  execution: z.enum(["server", "local"]),
+  responseMode: z.enum(["pool", "generated", "fallback"]).optional(),
 });
 export type FreeformActionResultDto = z.infer<
   typeof freeformActionResultSchema
 >;
+
+export const freeformStreamEventSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("status"), stage: z.literal("analyzing") }),
+  z.strictObject({ type: z.literal("draft"), text: z.string().max(500) }),
+  z.strictObject({
+    type: z.literal("result"),
+    result: freeformActionResultSchema,
+  }),
+  z.strictObject({
+    type: z.literal("error"),
+    code: z.string(),
+    status: z.number().int(),
+  }),
+]);
+export type FreeformStreamEventDto = z.infer<typeof freeformStreamEventSchema>;
 
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),

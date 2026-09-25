@@ -17,6 +17,8 @@ import {
   allowedConsequences,
   applyAction,
   BOARDING_SOURCE,
+  standardAnalysis,
+  standardPassengerReply,
 } from "@vsm/simulation-core";
 import { SessionRepository } from "../sessions/session.repository";
 import { AiAdapterService } from "./ai-adapter.service";
@@ -37,13 +39,14 @@ export class FreeformService {
   async submit(
     input: SubmitFreeformActionDto,
     expectedCount?: number,
+    onDraft?: (text: string) => void,
   ): Promise<FreeformActionResultDto> {
     const key = freeformKey(input);
     const cached = await this.repository.getFreeform(key);
     if (cached) return cached;
     const pending = this.pending.get(key);
     if (pending) return pending;
-    const task = this.perform(input, key, expectedCount);
+    const task = this.perform(input, key, expectedCount, onDraft);
     this.pending.set(key, task);
     try {
       return await task;
@@ -56,6 +59,7 @@ export class FreeformService {
     input: SubmitFreeformActionDto,
     key: string,
     expectedCount?: number,
+    onDraft?: (text: string) => void,
   ): Promise<FreeformActionResultDto> {
     const state = await this.repository.get(input.sessionId);
     if (!state) throw new NotFoundException({ code: "session_not_found" });
@@ -74,17 +78,22 @@ export class FreeformService {
       });
     if (
       conduct?.kind === "violent_threat" &&
-      state.engineVersion !== "boarding-3"
+      state.engineVersion === "boarding-2"
     )
       throw new UnprocessableEntityException({
         code: "ai_intent_uncertain",
         message:
           "Для этого разбора начните новую попытку с актуальными правилами.",
       });
+    const standard =
+      state.engineVersion === "boarding-4"
+        ? standardAnalysis(input.freeformText)
+        : undefined;
     let analysis;
     try {
       analysis = nluAnalysisSchema.parse(
         conduct?.analysis ??
+          standard ??
           farewell(input.freeformText) ??
           (await this.ai.analyze(input.freeformText, state)),
       );
@@ -126,6 +135,16 @@ export class FreeformService {
       idempotencyKey: key,
       actionId: analysis.matchedActionId,
       clientTimestamp: input.clientTimestamp,
+      ...(state.engineVersion === "boarding-4"
+        ? {
+            communication: {
+              polite: analysis.markers.polite,
+              empathy: analysis.markers.empathy,
+              rude: analysis.markers.rude,
+              ...(input.interrupted ? { interrupted: true } : {}),
+            },
+          }
+        : {}),
       ...(conduct?.kind === "violent_threat"
         ? { conduct: "violent_threat" as const }
         : {}),
@@ -137,27 +156,44 @@ export class FreeformService {
       reply: actorReference(next, input.freeformText),
     };
     let actorFallback = true;
-    try {
-      const proposed = actorResponseSchema.parse(
-        await this.ai.act(next, consequences, {
-          employee_speech: input.freeformText,
-          markers: analysis.markers,
-        }),
-      );
-      const contradictsPermission =
-        proposed.consequenceId === "boarding_permission_granted" &&
-        /не\s+(?:мог|смог|разреш|пуст|удалось|пройти)/iu.test(proposed.reply);
-      if (
-        consequences.some((outcome) => outcome.id === proposed.consequenceId) &&
-        !contradictsPermission &&
-        actorIsGrounded(next, proposed, input.freeformText)
-      ) {
-        actor = proposed;
-        actorFallback = false;
+    const pooled =
+      !conduct && standard && analysis.confidence >= 0.95
+        ? standardPassengerReply(next, input.freeformText)
+        : undefined;
+    if (pooled) {
+      actor.reply = pooled;
+      actorFallback = false;
+    } else
+      try {
+        const proposed = actorResponseSchema.parse(
+          await this.ai.act(
+            next,
+            consequences,
+            {
+              employee_speech: input.freeformText,
+              markers: analysis.markers,
+            },
+            onDraft,
+          ),
+        );
+        const contradictsPermission =
+          proposed.consequenceId === "boarding_permission_granted" &&
+          /не\s+(?:мог|смог|разреш|пуст|удалось|пройти)/iu.test(proposed.reply);
+        if (
+          consequences.some(
+            (outcome) => outcome.id === proposed.consequenceId,
+          ) &&
+          !contradictsPermission &&
+          actorIsGrounded(next, proposed, input.freeformText)
+        ) {
+          actor = proposed;
+          actorFallback = false;
+        }
+      } catch {
+        /* NLU succeeded. Deterministic narrative remains available without actor. */
       }
-    } catch {
-      /* NLU succeeded. Deterministic narrative remains available without actor. */
-    }
+    if (command.communication?.interrupted && command.communication.rude && !actor.reply.includes("Не перебивайте"))
+      actor.reply = `Не перебивайте меня! ${actor.reply}`.slice(0, 500);
     const result: FreeformActionResultDto = {
       session: next,
       command,
@@ -167,6 +203,10 @@ export class FreeformService {
       actorFallback,
       source: BOARDING_SOURCE,
       execution: "server",
+      // Old browser builds validate this response strictly; keep their wire shape intact.
+      ...(state.engineVersion === "boarding-4" ? {
+        responseMode: pooled ? "pool" as const : actorFallback ? "fallback" as const : "generated" as const,
+      } : {}),
     };
     try {
       await this.repository.mutate(
@@ -197,6 +237,7 @@ export function freeformKey(input: SubmitFreeformActionDto): string {
         input.sessionId,
         input.freeformText,
         input.clientTimestamp,
+        ...(input.interrupted === undefined ? [] : [input.interrupted]),
       ]),
     )
     .digest("hex");
