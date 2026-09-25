@@ -4,7 +4,11 @@ import type {
   SessionEventDto,
   SessionStateDto,
   SubmitActionDto,
+  SyncSessionDto,
 } from "@vsm/api-contracts";
+import { ENGINE_VERSION } from "@vsm/api-contracts";
+import { resolveD20 } from "./d20";
+export { resolveD20 } from "./d20";
 
 // No Node imports: these same rules can execute in a phone browser.
 const ACTIONS = [
@@ -49,7 +53,7 @@ export class SimulationError extends Error {
 
 export function createSession(
   input: CreateSessionDto,
-  sessionId = globalThis.crypto.randomUUID(),
+  sessionId: string = globalThis.crypto.randomUUID(),
 ): SessionStateDto {
   if (input.scenarioId !== "boarding_no_ticket")
     throw new SimulationError("unknown_scenario");
@@ -64,12 +68,15 @@ export function createSession(
   ];
   return {
     id: sessionId,
+    engineVersion: ENGINE_VERSION,
     scenarioId: input.scenarioId,
     mode: input.mode,
     difficulty: input.difficulty,
     seed,
     currentTimeMinutes: 0,
     currentLocationId: "car_01_boarding",
+    passengerLoyalty: 0,
+    checks: [],
     scores: {
       safety: 100,
       service: 100,
@@ -184,13 +191,57 @@ export function applyAction(
             15,
             "Направление в кассу без объяснения ограничения",
           );
-        next.passengerReply =
-          "Спасибо, обращусь в официальный контактный центр. Там помогут с заказом?";
+        {
+          const check = resolveD20(
+            state.seed,
+            state.checks.length,
+            action.id,
+            11 + 2 * state.difficulty,
+            0,
+            done("ask_for_ticket") && done("explain_rules") ? 4 : 0,
+          );
+          next.checks.push(check);
+          const reactions = {
+            critical_success: {
+              loyalty: 30,
+              reply:
+                "Спасибо, теперь всё ясно. Хорошо, что вы помогли разобраться с заказом.",
+            },
+            success: {
+              loyalty: 10,
+              reply:
+                "Спасибо, обращусь в официальный контактный центр. Там помогут с заказом?",
+            },
+            failure: {
+              loyalty: -15,
+              reply:
+                "Я всё равно недоволен. Почему из-за ошибки покупки мне приходится куда-то обращаться?",
+            },
+            critical_failure: {
+              loyalty: -40,
+              reply:
+                "Я напишу жалобу! Но адрес контактного центра всё-таки дайте.",
+            },
+          };
+          const reaction = reactions[check.outcome];
+          next.passengerLoyalty = Math.max(
+            -100,
+            Math.min(100, next.passengerLoyalty + reaction.loyalty),
+          );
+          next.passengerReply = reaction.reply;
+          record(
+            `Реакция пассажира: d20=${check.roll}, бонус=${check.sopBonus}, итог=${check.total}, DC=${check.dc}, ${check.outcome}. Случайность не меняет профессиональную оценку.`,
+            "check_resolved",
+          );
+        }
         break;
       case "close_conversation":
         if (["ask_for_ticket", "explain_rules", "offer_help"].every(done)) {
           next.outcome = "resolved";
-          next.passengerReply = "Да, теперь понятно. Спасибо за помощь.";
+          next.passengerReply =
+            next.passengerLoyalty < 0
+              ? "Я недоволен ситуацией, но понимаю порядок и знаю, куда обратиться."
+              : "Да, теперь понятно. Спасибо за помощь.";
         } else {
           penalty(
             "service",
@@ -202,6 +253,7 @@ export function applyAction(
         }
         break;
       case "allow_boarding":
+        next.passengerLoyalty = 30;
         penalty(
           "procedure",
           70,
@@ -212,6 +264,7 @@ export function applyAction(
           "Вы разрешили посадку без действительного проездного документа.";
         break;
       case "dismiss_passenger":
+        next.passengerLoyalty = -40;
         penalty("service", 50, "Пассажир остался без помощи");
         penalty("communication", 40, "Отказ без спокойного объяснения");
         next.outcome = "failed";
@@ -278,4 +331,53 @@ export function applyAction(
 
 function deadline(difficulty: number): number {
   return 12 - difficulty * 2;
+}
+
+export function replaySession(
+  id: string,
+  journal: SyncSessionDto,
+): SessionStateDto {
+  return mergeJournal(id, journal);
+}
+
+export function mergeJournal(
+  id: string,
+  journal: SyncSessionDto,
+  current?: SessionStateDto,
+): SessionStateDto {
+  if (
+    journal.engineVersion !== ENGINE_VERSION ||
+    (current && current.engineVersion !== ENGINE_VERSION)
+  )
+    throw new SimulationError("engine_version_mismatch");
+  if (
+    new Set(journal.commands.map((command) => command.idempotencyKey)).size !==
+    journal.commands.length
+  )
+    throw new SimulationError("duplicate_journal_key");
+  if (
+    current &&
+    (current.id !== id ||
+      current.seed !== journal.setup.seed ||
+      current.scenarioId !== journal.setup.scenarioId ||
+      current.mode !== journal.setup.mode ||
+      current.difficulty !== journal.setup.difficulty)
+  )
+    throw new SimulationError("session_setup_conflict");
+  let state = current ?? createSession(journal.setup, id);
+  const shared = Math.min(state.appliedActions.length, journal.commands.length);
+  for (let index = 0; index < shared; index++) {
+    const stored = state.appliedActions[index]!;
+    const command = journal.commands[index]!;
+    if (
+      stored.key !== command.idempotencyKey ||
+      stored.actionId !== command.actionId ||
+      stored.clientTimestamp !== command.clientTimestamp
+    )
+      throw new SimulationError("journal_conflict");
+  }
+  // A delayed prefix is a retry, not a request to truncate already persisted history.
+  for (const command of journal.commands.slice(state.appliedActions.length))
+    state = applyAction(state, command);
+  return state;
 }

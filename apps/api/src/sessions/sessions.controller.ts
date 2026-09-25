@@ -16,9 +16,11 @@ import {
   createSessionSchema,
   submitActionSchema,
   sessionStateSchema,
+  syncSessionSchema,
   type CreateSessionDto,
   type SessionStateDto,
   type SubmitActionDto,
+  type SyncSessionDto,
 } from "@vsm/api-contracts";
 
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -38,7 +40,7 @@ export class SessionsController {
   })
   create(
     @Body(new ZodValidationPipe(createSessionSchema)) input: CreateSessionDto,
-  ): SessionStateDto {
+  ): Promise<SessionStateDto> {
     return this.sessions.create(input);
   }
 
@@ -49,7 +51,7 @@ export class SessionsController {
   })
   getById(
     @Param("sessionId", new ParseUUIDPipe()) sessionId: string,
-  ): SessionStateDto {
+  ): Promise<SessionStateDto> {
     return this.sessions.getById(sessionId);
   }
 
@@ -62,7 +64,20 @@ export class SessionsController {
   applyAction(
     @Param("sessionId", new ParseUUIDPipe()) sessionId: string,
     @Body(new ZodValidationPipe(submitActionSchema)) action: SubmitActionDto,
-  ): SessionStateDto {
+  ): Promise<SessionStateDto> {
     return this.sessions.applyAction(sessionId, action);
+  }
+
+  @Post(":sessionId/sync")
+  @ApiBody({ schema: openApiSchema(syncSessionSchema) })
+  @ApiCreatedResponse({
+    description: "Журнал пересчитан и сохранён",
+    schema: openApiSchema(sessionStateSchema),
+  })
+  sync(
+    @Param("sessionId", new ParseUUIDPipe()) sessionId: string,
+    @Body(new ZodValidationPipe(syncSessionSchema)) journal: SyncSessionDto,
+  ): Promise<SessionStateDto> {
+    return this.sessions.sync(sessionId, journal);
   }
 }

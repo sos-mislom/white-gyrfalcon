@@ -3,23 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build && node ../../scripts/build-offline.mjs",
     "dev": "next dev --hostname 0.0.0.0",
     "lint": "node ../../node_modules/eslint/bin/eslint.js .",
     "start": "next start --hostname 0.0.0.0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@vsm/api-contracts": "0.1.0",
+    "@vsm/simulation-core": "0.1.0",
     "next": "16.3.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "26.6.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.6"
+    "eslint-config-next": "16.3.6",
+    "fake-indexeddb": "6.2.5",
+    "vitest": "5.0.2"
   }
 }

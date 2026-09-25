@@ -4,8 +4,8 @@
   "description": "Тренажёр проводника высокоскоростного поезда",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4f0e8",
-  "theme_color": "#12222f",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "lang": "ru",
   "icons": [
     {
@@ -16,4 +16,3 @@
     }
   ]
 }
-

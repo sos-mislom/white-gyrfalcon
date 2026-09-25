@@ -1,0 +1,96 @@
+import {
+  Logger,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from "@nestjs/common";
+import { readFileSync } from "node:fs";
+import { Pool } from "pg";
+import { sessionStateSchema, type SessionStateDto } from "@vsm/api-contracts";
+import { SessionRepository } from "./session.repository";
+
+export class PostgresSessionRepository
+  extends SessionRepository
+  implements OnModuleInit, OnModuleDestroy
+{
+  private readonly pool = new Pool({
+    host: process.env.PGHOST,
+    port: Number(process.env.PGPORT ?? 5432),
+    database: process.env.PGDATABASE ?? "vsm",
+    user: process.env.PGUSER ?? "vsm",
+    password: process.env.PGPASSWORD_FILE
+      ? readFileSync(process.env.PGPASSWORD_FILE, "utf8").trim()
+      : process.env.PGPASSWORD,
+    max: 4,
+    connectionTimeoutMillis: 3000,
+    idleTimeoutMillis: 10000,
+    statement_timeout: 5000,
+  });
+
+  constructor() {
+    super();
+    this.pool.on("error", () =>
+      new Logger("SessionRepository").error("Database connection failed"),
+    );
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS vsm_sessions (
+      id uuid PRIMARY KEY,
+      state jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )`);
+  }
+  async onModuleDestroy(): Promise<void> {
+    await this.pool.end();
+  }
+  async ready(): Promise<boolean> {
+    try {
+      await this.pool.query("SELECT 1");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async get(id: string): Promise<SessionStateDto | undefined> {
+    const result = await this.pool.query<{ state: unknown }>(
+      "SELECT state FROM vsm_sessions WHERE id = $1",
+      [id],
+    );
+    return result.rows[0]
+      ? sessionStateSchema.parse(result.rows[0].state)
+      : undefined;
+  }
+  async mutate(
+    id: string,
+    change: (state: SessionStateDto | undefined) => SessionStateDto,
+  ): Promise<SessionStateDto> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Also serializes concurrent creation where no row yet exists. Hash collisions only serialize unrelated IDs.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [id]);
+      const result = await client.query<{ state: unknown }>(
+        "SELECT state FROM vsm_sessions WHERE id = $1 FOR UPDATE",
+        [id],
+      );
+      const current = result.rows[0]
+        ? sessionStateSchema.parse(result.rows[0].state)
+        : undefined;
+      const next = change(current);
+      if (next.id !== id) throw new Error("Repository ID mismatch");
+      await client.query(
+        `INSERT INTO vsm_sessions(id, state) VALUES ($1, $2::jsonb)
+        ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = now()`,
+        [id, JSON.stringify(next)],
+      );
+      await client.query("COMMIT");
+      return next;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}

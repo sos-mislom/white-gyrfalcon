@@ -43,6 +43,28 @@ export const submitActionSchema = z.strictObject({
 });
 export type SubmitActionDto = z.infer<typeof submitActionSchema>;
 
+export const ENGINE_VERSION = "boarding-2" as const;
+export const syncSessionSchema = z
+  .strictObject({
+    engineVersion: z.literal(ENGINE_VERSION),
+    setup: createSessionSchema.extend({
+      seed: z.number().int().min(0).max(2_147_483_647),
+    }),
+    commands: z.array(submitActionSchema).max(40),
+  })
+  .superRefine((value, context) => {
+    if (
+      new Set(value.commands.map((command) => command.idempotencyKey)).size !==
+      value.commands.length
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["commands"],
+        message: "Command keys must be unique within a journal",
+      });
+  });
+export type SyncSessionDto = z.infer<typeof syncSessionSchema>;
+
 export const incidentStateSchema = z.object({
   id: z.string(),
   locationId: z.string(),
@@ -70,14 +92,33 @@ export const sessionEventSchema = z.object({
     "action_applied",
     "incident_escalated",
     "session_finished",
+    "check_resolved",
   ]),
   atMinute: z.number().nonnegative(),
   message: z.string(),
 });
 export type SessionEventDto = z.infer<typeof sessionEventSchema>;
 
+export const checkResultSchema = z.object({
+  actionId: z.string(),
+  index: z.number().int().nonnegative(),
+  roll: z.number().int().min(1).max(20),
+  dc: z.number().int(),
+  skillModifier: z.number().int(),
+  sopBonus: z.number().int(),
+  total: z.number().int(),
+  outcome: z.enum([
+    "critical_success",
+    "success",
+    "failure",
+    "critical_failure",
+  ]),
+});
+export type CheckResultDto = z.infer<typeof checkResultSchema>;
+
 export const sessionStateSchema = z.object({
   id: z.string().uuid(),
+  engineVersion: z.literal(ENGINE_VERSION),
   scenarioId: z.string(),
   mode: sessionModeSchema,
   difficulty: z.number().int().min(1).max(3),
@@ -85,6 +126,8 @@ export const sessionStateSchema = z.object({
   currentTimeMinutes: z.number().nonnegative(),
   currentLocationId: z.string(),
   scores: scoreStateSchema,
+  passengerLoyalty: z.number().int().min(-100).max(100),
+  checks: z.array(checkResultSchema),
   incidents: z.array(incidentStateSchema),
   events: z.array(sessionEventSchema),
   appliedIdempotencyKeys: z.array(z.string().uuid()),

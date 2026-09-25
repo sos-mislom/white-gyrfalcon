@@ -3,60 +3,68 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
 } from "@nestjs/common";
 import type {
   CreateSessionDto,
   SessionStateDto,
   SubmitActionDto,
+  SyncSessionDto,
 } from "@vsm/api-contracts";
 import {
   applyAction,
   createSession,
+  mergeJournal,
   SimulationError,
 } from "@vsm/simulation-core";
+import { SessionRepository } from "./session.repository";
 
 @Injectable()
 export class SessionsService {
-  private readonly sessions = new Map<string, SessionStateDto>();
+  constructor(private readonly repository: SessionRepository) {}
 
-  create(input: CreateSessionDto): SessionStateDto {
-    if (this.sessions.size >= 1000)
-      throw new ServiceUnavailableException({
-        code: "session_capacity_reached",
-      });
+  create(input: CreateSessionDto): Promise<SessionStateDto> {
     const session = createSession(input);
-    this.sessions.set(session.id, session);
-    return session;
+    return this.repository.mutate(session.id, () => session);
   }
 
-  getById(sessionId: string): SessionStateDto {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
-      throw new NotFoundException({
-        code: "session_not_found",
-        sessionId,
-      });
-    }
-
-    return session;
+  async getById(id: string): Promise<SessionStateDto> {
+    return this.required(await this.repository.get(id));
   }
 
-  applyAction(sessionId: string, action: SubmitActionDto): SessionStateDto {
-    const current = this.getById(sessionId);
-    let next: SessionStateDto;
+  applyAction(id: string, action: SubmitActionDto): Promise<SessionStateDto> {
+    return this.mutate(id, (state) =>
+      applyAction(this.required(state), action),
+    );
+  }
+
+  sync(id: string, journal: SyncSessionDto): Promise<SessionStateDto> {
+    return this.mutate(id, (state) => mergeJournal(id, journal, state));
+  }
+
+  private required(state?: SessionStateDto): SessionStateDto {
+    if (!state) throw new NotFoundException({ code: "session_not_found" });
+    return state;
+  }
+
+  private async mutate(
+    id: string,
+    change: (state: SessionStateDto | undefined) => SessionStateDto,
+  ): Promise<SessionStateDto> {
     try {
-      next = applyAction(current, action);
+      return await this.repository.mutate(id, change);
     } catch (error) {
       if (!(error instanceof SimulationError)) throw error;
       if (
-        error.code === "idempotency_conflict" ||
-        error.code === "session_finished"
+        [
+          "idempotency_conflict",
+          "session_finished",
+          "journal_conflict",
+          "session_setup_conflict",
+          "engine_version_mismatch",
+        ].includes(error.code)
       )
         throw new ConflictException({ code: error.code });
       throw new BadRequestException({ code: error.code });
     }
-    this.sessions.set(sessionId, next);
-    return next;
   }
 }

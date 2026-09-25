@@ -1,117 +1,52 @@
 "use client";
+import { useTraining } from "../training/use-training";
+import { OfflineStatus } from "../training/offline-status";
 
-import { useRef, useState } from "react";
-
-import {
-  sessionStateSchema,
-  type SessionStateDto,
-  type SubmitActionDto,
-} from "@vsm/api-contracts";
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+const syncLabels = {
+  pending: "Сохранено на устройстве. Ожидает отправки на сервер.",
+  syncing: "Сохранено на устройстве. Сверяем журнал с сервером…",
+  synced: "Все сохранённые смены подтверждены сервером.",
+  conflict:
+    "Сервер обнаружил несовпадение журнала или версии правил. Локальные данные сохранены; требуется разбор, повторная отправка их не перезапишет.",
+};
 
 export default function HomePage() {
-  const [session, setSession] = useState<SessionStateDto | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const pendingAction = useRef<SubmitActionDto | null>(null);
-  const [canRetryAction, setCanRetryAction] = useState(false);
-
-  async function startSession() {
-    setCanRetryAction(false);
-    setStatus("loading");
-    try {
-      const response = await fetch(`${apiUrl}/sessions`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          scenarioId: "boarding_no_ticket",
-          mode: "training",
-          difficulty: 1,
-        }),
-      });
-      if (!response.ok) throw new Error("API rejected session creation");
-      setSession(sessionStateSchema.parse(await response.json()));
-      setStatus("idle");
-    } catch {
-      setStatus("error");
-    }
-  }
-
-  async function applyAction(actionId?: string) {
-    if (!session) return;
-    if (!pendingAction.current && actionId)
-      pendingAction.current = {
-        idempotencyKey: crypto.randomUUID(),
-        actionId,
-        clientTimestamp: new Date().toISOString(),
-      };
-    if (!pendingAction.current) return;
-    setCanRetryAction(true);
-    setStatus("loading");
-    try {
-      const response = await fetch(`${apiUrl}/sessions/${session.id}/actions`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(pendingAction.current),
-      });
-      if (!response.ok) throw new Error("API rejected action");
-      setSession(sessionStateSchema.parse(await response.json()));
-      pendingAction.current = null;
-      setStatus("idle");
-    } catch {
-      setStatus("error");
-    }
-  }
-
+  const training = useTraining();
+  const { session, ready, busy, error } = training;
+  const disabled = !ready || busy || Boolean(error);
   return (
     <main className="shell">
-      <header className="topbar">
-        <span className="product-mark" aria-hidden="true">
-          БК
-        </span>
-        <div>
-          <p className="eyebrow">Тренажёр проводника</p>
-          <h1>Учебная смена</h1>
-        </div>
-        <span className="connection" role="status">
-          Фаза 1
-        </span>
-      </header>
-
-      <section className="briefing" aria-labelledby="briefing-title">
-        <p className="eyebrow">Рейс ВСМ · Москва — Санкт-Петербург</p>
-        <h2 id="briefing-title">Списание есть, билета нет</h2>
-        <p>
-          Пассажир показывает списание с карты, но действительного билета в
-          системе нет. Помогите ему разобраться, соблюдая правила посадки. Время
-          идёт только при выборе действия. На ситуацию отведено 10 учебных
-          минут.
-        </p>
-      </section>
-
-      {status === "error" && (
-        <div className="error" role="alert">
-          Не удалось получить ответ сервера.
-          {canRetryAction ? (
-            <button type="button" onClick={() => applyAction()}>
-              Повторить отправку того же действия
-            </button>
-          ) : (
-            " Попробуйте начать смену ещё раз."
-          )}
+      <h1>Тренажёр проводника</h1>
+      <p>Фаза 2 · Локальная учебная смена</p>
+      <OfflineStatus />
+      {ready && training.record && (
+        <div className="sync-status">
+          <p role="status">{syncLabels[training.sync]}</p>
+          <button
+            type="button"
+            onClick={training.syncNow}
+            disabled={training.sync === "syncing"}
+          >
+            Синхронизировать
+          </button>
         </div>
       )}
-
+      {error && <p role="alert">{error}</p>}
+      {!ready && <p role="status">Читаем сохранённую смену…</p>}
+      <section className="briefing" aria-labelledby="briefing-title">
+        <h2 id="briefing-title">Списание есть, билета нет</h2>
+        <p>
+          Пассажир показывает списание с карты, но действительного билета нет.
+          Помогите разобраться, соблюдая правила посадки. На ситуацию отведено
+          10 учебных минут. Ходы и оценка рассчитываются на этом устройстве.
+        </p>
+      </section>
       {session ? (
-        <section className="session" aria-labelledby="session-title">
+        <section aria-labelledby="session-title">
           <div className="session-heading">
-            <div>
-              <p className="eyebrow">Активная ситуация</p>
-              <h2 id="session-title">Пассажир без билета</h2>
-            </div>
+            <h2 id="session-title">Пассажир без билета</h2>
             <time>{session.currentTimeMinutes} мин</time>
           </div>
-
           <dl className="metrics">
             <div>
               <dt>Процедура</dt>
@@ -126,18 +61,21 @@ export default function HomePage() {
               <dd>{session.scores.communication}</dd>
             </div>
           </dl>
-
           <p className="passenger-reply" role="status">
             {session.passengerReply}
           </p>
-          <div className="action-list" aria-busy={status === "loading"}>
+          <p>
+            Лояльность пассажира: {session.passengerLoyalty}. Это отдельный
+            показатель, не оценка вашей квалификации.
+          </p>
+          <div className="action-list" aria-busy={busy}>
             {session.availableActions.map((action) => (
               <button
+                key={action.id}
                 className="scenario-action"
                 type="button"
-                key={action.id}
-                onClick={() => applyAction(action.id)}
-                disabled={status === "loading" || status === "error"}
+                disabled={disabled}
+                onClick={() => training.act(action.id)}
               >
                 {action.label} <span>{action.durationMinutes} мин</span>
               </button>
@@ -151,14 +89,14 @@ export default function HomePage() {
                   : "Есть что разобрать"}
               </h3>
               <p>
-                Управление временем: {session.scores.timeManagement}/100. Это
-                учебная оценка по правилам, не заключение о квалификации.
+                Управление временем: {session.scores.timeManagement}/100.
+                Учебная оценка по правилам, не заключение о квалификации.
               </p>
               <button
                 className="primary-action"
                 type="button"
-                onClick={startSession}
-                disabled={status === "loading"}
+                onClick={training.start}
+                disabled={disabled}
               >
                 Новая попытка
               </button>
@@ -179,12 +117,16 @@ export default function HomePage() {
         <button
           className="primary-action"
           type="button"
-          onClick={startSession}
-          disabled={status === "loading"}
+          disabled={disabled}
+          onClick={training.start}
         >
-          {status === "loading" ? "Создаём смену…" : "Начать учебную смену"}
+          Начать учебную смену
         </button>
       )}
+      <p className="storage-note">
+        Сохранение привязано к этому браузеру и адресу. Не очищайте данные сайта
+        до синхронизации; приватный режим не подходит для хранения смен.
+      </p>
     </main>
   );
 }

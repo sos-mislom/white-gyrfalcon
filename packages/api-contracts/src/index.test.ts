@@ -1,8 +1,40 @@
 import { describe, expect, it } from "vitest";
 
-import { createSessionSchema, submitActionSchema } from "./index";
+import {
+  createSessionSchema,
+  submitActionSchema,
+  syncSessionSchema,
+  ENGINE_VERSION,
+} from "./index";
 
 describe("API contracts", () => {
+  it("requires a reproducible seed and rejects client scores or duplicate command keys", () => {
+    const journal = {
+      engineVersion: ENGINE_VERSION,
+      setup: { scenarioId: "boarding_no_ticket", seed: 42 },
+      commands: [],
+    };
+    expect(syncSessionSchema.safeParse(journal).success).toBe(true);
+    expect(
+      syncSessionSchema.safeParse({ ...journal, scores: { procedure: 100 } })
+        .success,
+    ).toBe(false);
+    expect(
+      syncSessionSchema.safeParse({
+        ...journal,
+        setup: { scenarioId: "boarding_no_ticket" },
+      }).success,
+    ).toBe(false);
+    const command = {
+      actionId: "wait",
+      idempotencyKey: crypto.randomUUID(),
+      clientTimestamp: "2026-09-25T18:00:00Z",
+    };
+    expect(
+      syncSessionSchema.safeParse({ ...journal, commands: [command, command] })
+        .success,
+    ).toBe(false);
+  });
   it("fills safe defaults for a new training session", () => {
     const result = createSessionSchema.parse({
       scenarioId: "boarding_no_ticket",

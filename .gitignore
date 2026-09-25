@@ -36,3 +36,4 @@ Thumbs.db
 npm-debug.log*
 .playwright-mcp/
 __pycache__/
+apps/web/public/sw.js
