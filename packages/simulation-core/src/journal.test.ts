@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ENGINE_VERSION, type SyncSessionDto } from "@vsm/api-contracts";
-import { mergeJournal, replaySession } from "./index";
+import { mergeJournal, replaySession, applyAction } from "./index";
 
 it("keeps old saved rules readable while new boarding checks reduce safety", () => {
   const journal: SyncSessionDto = {
@@ -47,6 +47,39 @@ const createJournal = (): SyncSessionDto => ({
   })),
 });
 describe("journal replay", () => {
+  it("conduct is part of idempotency and history, and cannot alter other actions", () => {
+    const journal = createJournal();
+    const command = {
+      ...journal.commands[0]!,
+      actionId: "dismiss_passenger",
+      conduct: "violent_threat" as const,
+    };
+    const id = crypto.randomUUID();
+    const state = replaySession(id, { ...journal, commands: [command] });
+    expect(state.scores.safety).toBe(0);
+    expect(() =>
+      applyAction(state, { ...command, conduct: undefined }),
+    ).toThrow("idempotency_conflict");
+    expect(() =>
+      mergeJournal(
+        id,
+        { ...journal, commands: [{ ...command, conduct: undefined }] },
+        state,
+      ),
+    ).toThrow("journal_conflict");
+    expect(() =>
+      replaySession(id, {
+        ...journal,
+        commands: [{ ...command, actionId: "offer_help" }],
+      }),
+    ).toThrow("invalid_conduct");
+    expect(
+      replaySession(id, {
+        ...journal,
+        commands: [{ ...command, conduct: undefined }],
+      }).scores.safety,
+    ).toBe(100);
+  });
   it("incremental sync and full offline replay produce identical states", () => {
     const id = crypto.randomUUID(),
       journal = createJournal();

@@ -26,6 +26,61 @@ async function setup() {
 }
 
 describe("boarding freeform → NLU → core → allowed actor → persisted result", () => {
+  it("closes a completed case with farewell alone, without an NLU round trip", async () => {
+    const t = await setup();
+    for (const actionId of ["ask_for_ticket", "explain_rules", "offer_help"])
+      await t.sessions.applyAction(t.session.id, {
+        actionId,
+        idempotencyKey: randomUUID(),
+        clientTimestamp: "2026-09-26T00:00:00Z",
+      });
+    const result = await t.freeform.submit(
+      t.request("Всего доброго, до свидания"),
+    );
+    expect(result.analysis?.matchedActionId).toBe("close_conversation");
+    expect(result.session.outcome).toBe("resolved");
+    expect(t.model.calls).toBe(0);
+    expect(t.model.lastActorInput?.employee_speech).toBe(
+      "Всего доброго, до свидания",
+    );
+    expect(t.model.lastActorState?.checks).toEqual(result.session.checks);
+  });
+  it("resolves direct threats in the engine and replays the exact safety penalty", async () => {
+    const t = await setup();
+    const input = t.request("Я тебя убью, если не уйдёшь!");
+    const result = await t.freeform.submit(input);
+    expect(result.analysis?.matchedActionId).toBe("dismiss_passenger");
+    expect(result.analysis?.markers.safetyViolation).toBe(true);
+    expect(result.analysis?.explanation).toContain("ст. 119 УК РФ");
+    expect(result.analysis?.explanation).toContain("ст. 20.1 КоАП РФ");
+    expect(result.actor.consequenceId).toBe("police_custody");
+    expect(result.session.scores.safety).toBe(0);
+    expect(result.session.outcome).toBe("failed");
+    expect(await t.freeform.submit(input)).toEqual(result);
+    expect(
+      replaySession(t.session.id, {
+        engineVersion: result.session.engineVersion,
+        setup: {
+          scenarioId: "boarding_no_ticket",
+          mode: "training",
+          difficulty: 1,
+          seed: 42,
+        },
+        commands: [result.command],
+      }),
+    ).toEqual(result.session);
+    expect(t.model.calls).toBe(0);
+  });
+  it("ambiguous quoted threats never reach model scoring and premature farewells do not resolve", async () => {
+    const t = await setup();
+    await expect(
+      t.freeform.submit(t.request("Пассажир сказал: «Я тебя убью»")),
+    ).rejects.toThrow();
+    expect(await t.repository.get(t.session.id)).toEqual(t.session);
+    const result = await t.freeform.submit(t.request("До свидания"));
+    expect(result.session.outcome).toBe("active");
+    expect(result.session.scores.safety).toBe(100);
+  });
   it("does not turn granted boarding permission into a passenger refusal", async () => {
     const t = await setup();
     t.model.actorReply = "Я не смог пройти посадку";

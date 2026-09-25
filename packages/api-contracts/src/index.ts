@@ -40,6 +40,7 @@ export const submitActionSchema = z.strictObject({
   idempotencyKey: z.string().uuid(),
   actionId: z.string().trim().min(1).max(80),
   clientTimestamp: z.string().datetime({ offset: true }),
+  conduct: z.literal("violent_threat").optional(),
 });
 export type SubmitActionDto = z.infer<typeof submitActionSchema>;
 
@@ -170,6 +171,7 @@ export const sessionStateSchema = z.object({
       key: z.string().uuid(),
       actionId: z.string(),
       clientTimestamp: z.string(),
+      conduct: z.literal("violent_threat").optional(),
     }),
   ),
   completedActionIds: z.array(z.string()),

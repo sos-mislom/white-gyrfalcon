@@ -126,12 +126,19 @@ export function applyAction(
   if (previous) {
     if (
       previous.actionId !== command.actionId ||
+      previous.conduct !== command.conduct ||
       previous.clientTimestamp !== command.clientTimestamp
     )
       throw new SimulationError("idempotency_conflict");
     return state;
   }
   if (state.outcome !== "active") throw new SimulationError("session_finished");
+  if (
+    command.conduct &&
+    (command.actionId !== "dismiss_passenger" ||
+      state.engineVersion !== "boarding-3")
+  )
+    throw new SimulationError("invalid_conduct");
   const action = ACTIONS.find((item) => item.id === command.actionId);
   if (!action) throw new SimulationError("unknown_action");
   const next: SessionStateDto = structuredClone(state);
@@ -141,6 +148,7 @@ export function applyAction(
     key: command.idempotencyKey,
     actionId: command.actionId,
     clientTimestamp: command.clientTimestamp,
+    ...(command.conduct ? { conduct: command.conduct } : {}),
   });
   const done = (id: string) => state.completedActionIds.includes(id);
   const record = (
@@ -278,6 +286,15 @@ export function applyAction(
         penalty("communication", 40, "Отказ без спокойного объяснения");
         next.outcome = "failed";
         next.passengerReply = "Но вы даже не объяснили, куда мне идти!";
+        if (command.conduct === "violent_threat") {
+          penalty(
+            "safety",
+            next.scores.safety,
+            "Прямая угроза пассажиру: критическое нарушение безопасности общения",
+          );
+          next.passengerReply =
+            "Помогите! Сотрудник поезда угрожает расправой! Охрана, полиция!";
+        }
         break;
       case "wait":
         penalty("timeManagement", 10, "Вопрос пассажира отложен");
@@ -313,8 +330,9 @@ export function applyAction(
     incident.urgency = "critical";
     next.outcome = "failed";
     penalty("timeManagement", 30, "Учебное окно посадки закончилось");
-    next.passengerReply =
-      "Время истекло. Вопрос не решён до окончания посадки.";
+    if (command.conduct !== "violent_threat")
+      next.passengerReply =
+        "Время истекло. Вопрос не решён до окончания посадки.";
   }
   incident.status =
     next.outcome === "active"
@@ -382,6 +400,7 @@ export function mergeJournal(
     if (
       stored.key !== command.idempotencyKey ||
       stored.actionId !== command.actionId ||
+      stored.conduct !== command.conduct ||
       stored.clientTimestamp !== command.clientTimestamp
     )
       throw new SimulationError("journal_conflict");

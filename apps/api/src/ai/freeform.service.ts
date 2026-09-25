@@ -11,6 +11,7 @@ import {
   nluAnalysisSchema,
   type FreeformActionResultDto,
   type SubmitFreeformActionDto,
+  type NluAnalysisDto,
 } from "@vsm/api-contracts";
 import {
   allowedConsequences,
@@ -19,6 +20,8 @@ import {
 } from "@vsm/simulation-core";
 import { SessionRepository } from "../sessions/session.repository";
 import { AiAdapterService } from "./ai-adapter.service";
+import { screenConduct } from "./conduct-rules";
+import { actorIsGrounded, actorReference } from "./actor-grounding";
 
 @Injectable()
 export class FreeformService {
@@ -62,10 +65,28 @@ export class FreeformService {
         state.appliedActions.length !== expectedCount)
     )
       throw new ConflictException({ code: "session_changed" });
+    const conduct = screenConduct(input.freeformText);
+    if (conduct?.kind === "uncertain")
+      throw new UnprocessableEntityException({
+        code: "ai_intent_uncertain",
+        message:
+          "Уточните, чья это реплика: цитата, отрицание и угроза не равнозначны. Ход не применён.",
+      });
+    if (
+      conduct?.kind === "violent_threat" &&
+      state.engineVersion !== "boarding-3"
+    )
+      throw new UnprocessableEntityException({
+        code: "ai_intent_uncertain",
+        message:
+          "Для этого разбора начните новую попытку с актуальными правилами.",
+      });
     let analysis;
     try {
       analysis = nluAnalysisSchema.parse(
-        await this.ai.analyze(input.freeformText, state),
+        conduct?.analysis ??
+          farewell(input.freeformText) ??
+          (await this.ai.analyze(input.freeformText, state)),
       );
     } catch {
       throw new ServiceUnavailableException({
@@ -91,7 +112,11 @@ export class FreeformService {
           input.freeformText,
         )) ||
       (analysis.markers.safetyViolation &&
-        analysis.matchedActionId !== "allow_boarding")
+        analysis.matchedActionId !== "allow_boarding" &&
+        !(
+          analysis.matchedActionId === "dismiss_passenger" &&
+          conduct?.kind === "violent_threat"
+        ))
     )
       throw new UnprocessableEntityException({
         code: "ai_intent_uncertain",
@@ -101,24 +126,31 @@ export class FreeformService {
       idempotencyKey: key,
       actionId: analysis.matchedActionId,
       clientTimestamp: input.clientTimestamp,
+      ...(conduct?.kind === "violent_threat"
+        ? { conduct: "violent_threat" as const }
+        : {}),
     };
     const next = applyAction(state, command);
     const consequences = allowedConsequences(next);
     let actor = {
       consequenceId: consequences[0]!.id,
-      reply: next.passengerReply,
+      reply: actorReference(next, input.freeformText),
     };
     let actorFallback = true;
     try {
       const proposed = actorResponseSchema.parse(
-        await this.ai.act(next, consequences),
+        await this.ai.act(next, consequences, {
+          employee_speech: input.freeformText,
+          markers: analysis.markers,
+        }),
       );
       const contradictsPermission =
         proposed.consequenceId === "boarding_permission_granted" &&
         /не\s+(?:мог|смог|разреш|пуст|удалось|пройти)/iu.test(proposed.reply);
       if (
         consequences.some((outcome) => outcome.id === proposed.consequenceId) &&
-        !contradictsPermission
+        !contradictsPermission &&
+        actorIsGrounded(next, proposed, input.freeformText)
       ) {
         actor = proposed;
         actorFallback = false;
@@ -169,4 +201,31 @@ export function freeformKey(input: SubmitFreeformActionDto): string {
     )
     .digest("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+// Exact etiquette-only phrases: no substring override of threats or mixed intentions.
+function farewell(text: string): NluAnalysisDto | undefined {
+  const normalized = text
+    .toLocaleLowerCase("ru")
+    .replace(/[.,!?—–-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (
+    !/^(?:(?:всего доброго|до свидания|счастливого пути|обращайтесь|спасибо|благодарю за понимание|вам все понятно|вам всё понятно)\s*)+$/u.test(
+      normalized,
+    )
+  )
+    return;
+  return {
+    matchedActionId: "close_conversation",
+    confidence: 1,
+    markers: {
+      polite: true,
+      empathy: false,
+      rude: false,
+      safetyViolation: false,
+    },
+    explanation:
+      "Этикетное прощание распознано правилом NLU. Полноту решения проверяет движок.",
+  };
 }

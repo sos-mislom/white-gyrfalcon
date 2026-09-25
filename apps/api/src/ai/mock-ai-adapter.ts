@@ -4,7 +4,7 @@ import type {
   NluAnalysisDto,
   SessionStateDto,
 } from "@vsm/api-contracts";
-import { AiAdapterService } from "./ai-adapter.service";
+import { AiAdapterService, type ActorInput } from "./ai-adapter.service";
 
 // Test-only explicit fixtures, never registered by the application module.
 export class MockAiAdapter extends AiAdapterService {
@@ -14,6 +14,8 @@ export class MockAiAdapter extends AiAdapterService {
   actorConsequence: string | null = null;
   actorReply: string | null = null;
   lastAllowed: AllowedConsequenceDto[] = [];
+  lastActorInput?: ActorInput;
+  lastActorState?: SessionStateDto;
 
   override async analyze(text: string): Promise<NluAnalysisDto> {
     this.calls++;
@@ -42,8 +44,11 @@ export class MockAiAdapter extends AiAdapterService {
   override async act(
     state: SessionStateDto,
     allowed: AllowedConsequenceDto[],
+    input: ActorInput,
   ): Promise<ActorResponseDto> {
     this.lastAllowed = allowed;
+    this.lastActorInput = input;
+    this.lastActorState = state;
     if (this.actorUnavailable) throw new Error("mock_actor_unavailable");
     return {
       consequenceId: this.actorConsequence ?? allowed[0]!.id,
