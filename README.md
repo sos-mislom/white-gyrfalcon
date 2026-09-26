@@ -7,6 +7,8 @@
   <img src="media/dialogue.png" alt="Диалог с пассажиром" width="280" />
 </p>
 
+[Скачать APK 0.5.2](https://github.com/sos-mislom/white-gyrfalcon/releases/download/v0.5.2/white-gyrfalcon-0.5.2.apk) · Android 8+
+
 ## Уже работает
 
 - 20 сценариев в YAML: посадка, места, дети, доступность, багаж, животные, безопасность и задержки. У каждого есть эскалация, ветки решений и правовое основание.
