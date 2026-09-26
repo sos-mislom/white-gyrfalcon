@@ -6,6 +6,9 @@ def standUrl = project.findProperty("standUrl") ?: (accessFile.isFile() ? new Js
 def signingFile = rootProject.file('../../.private/android/signing.properties')
 def signing = new Properties()
 if (signingFile.isFile()) signingFile.withInputStream { signing.load(it) }
+def mobileTokenFile = rootProject.file('../../.private/android/mobile-token.txt')
+def mobileToken = mobileTokenFile.isFile() ? mobileTokenFile.getText('UTF-8').trim() : ''
+if (mobileToken && !(mobileToken ==~ /[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/)) throw new GradleException('Invalid mobile access pass')
 if (standUrl != "http://127.0.0.1:18040" && !(standUrl ==~ /https:\/\/[a-zA-Z0-9.-]+/)) throw new GradleException('Expected an HTTPS origin without path')
 android {
     namespace 'ru.vsm.trainer'
@@ -15,9 +18,10 @@ android {
         applicationId 'ru.vsm.trainer'
         minSdk 26
         targetSdk 36
-        versionCode 3
-        versionName '0.5.0'
+        versionCode 4
+        versionName '0.5.1'
         buildConfigField 'String', 'STAND_URL', '"' + standUrl + '"'
+        buildConfigField 'String', 'MOBILE_ACCESS_TOKEN', '"' + mobileToken + '"'
     }
     buildFeatures { buildConfig true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
@@ -35,6 +39,7 @@ android {
         debug { applicationIdSuffix '.stand'; debuggable true }
         release {
             minifyEnabled false
+            if (signingFile.isFile() && !mobileToken) throw new GradleException('Signed release requires a mobile access pass')
             if (signingFile.isFile()) signingConfig signingConfigs.publicRelease
         }
     }

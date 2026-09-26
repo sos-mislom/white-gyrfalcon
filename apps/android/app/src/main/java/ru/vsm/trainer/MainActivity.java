@@ -7,23 +7,19 @@ import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.WindowInsets;
+import android.webkit.CookieManager;
 import android.webkit.HttpAuthHandler;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.EditText;
 import android.widget.LinearLayout;
-import org.json.JSONObject;
-import java.nio.file.Files;
 
 /** Stand wrapper with a narrow on-device speech bridge. */
 public final class MainActivity extends Activity {
     private WebView web;
     private NativeVoice nativeVoice;
-    private boolean provisionAttempted;
     private boolean shellRefreshStarted;
     private final String host = Uri.parse(BuildConfig.STAND_URL).getHost();
     private final String entryUrl = BuildConfig.STAND_URL + "/play";
@@ -81,34 +77,27 @@ public final class MainActivity extends Activity {
                     .setNegativeButton("Закрыть", (dialog, which) -> dialog.dismiss()).show();
             }
             @Override public void onReceivedHttpAuthRequest(WebView view, HttpAuthHandler handler, String authHost, String realm) {
-                if (!host.equalsIgnoreCase(authHost)) { handler.cancel(); return; }
-                if (BuildConfig.DEBUG && !provisionAttempted) {
-                    provisionAttempted = true;
-                    try {
-                        JSONObject access = new JSONObject(new String(Files.readAllBytes(new java.io.File(getFilesDir(), "stand-access.json").toPath()), java.nio.charset.StandardCharsets.UTF_8));
-                        if (BuildConfig.STAND_URL.equals(access.getString("baseUrl"))) {
-                            handler.proceed(access.getString("username"), access.getString("password"));
-                            return;
-                        }
-                    } catch (Exception ignored) { /* Manual login remains available. No secret logging. */ }
-                }
-                LinearLayout fields = new LinearLayout(MainActivity.this);
-                fields.setOrientation(LinearLayout.VERTICAL);
-                EditText username = new EditText(MainActivity.this);
-                username.setHint("Логин"); username.setText("trainer"); fields.addView(username);
-                EditText password = new EditText(MainActivity.this);
-                password.setHint("Пароль стенда");
-                password.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                fields.addView(password);
-                new AlertDialog.Builder(MainActivity.this).setTitle("Доступ к учебному стенду")
-                    .setView(fields).setPositiveButton("Войти", (dialog, which) -> handler.proceed(username.getText().toString(), password.getText().toString()))
-                    .setNegativeButton("Отмена", (dialog, which) -> handler.cancel())
-                    .setOnCancelListener(dialog -> handler.cancel()).show();
+                handler.cancel();
+                if (host.equalsIgnoreCase(authHost)) new AlertDialog.Builder(MainActivity.this)
+                    .setMessage("Доступ приложения не подтверждён. Установите актуальную версию.")
+                    .setPositiveButton("Понятно", (dialog, which) -> dialog.dismiss()).show();
             }
         });
         root.addView(web, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
-        if (state == null || web.restoreState(state) == null) web.loadUrl(entryUrl);
+        if (BuildConfig.MOBILE_ACCESS_TOKEN.isEmpty()) web.loadUrl(entryUrl);
+        else {
+            CookieManager cookies = CookieManager.getInstance();
+            cookies.setAcceptCookie(true);
+            cookies.setCookie(BuildConfig.STAND_URL,
+                "vsm_mobile=" + BuildConfig.MOBILE_ACCESS_TOKEN + "; Secure; HttpOnly; SameSite=Strict; Path=/",
+                accepted -> {
+                    if (accepted) { cookies.flush(); web.loadUrl(entryUrl); }
+                    else new AlertDialog.Builder(MainActivity.this)
+                        .setMessage("Не удалось открыть учебный стенд. Повторите запуск приложения.")
+                        .setPositiveButton("Понятно", (dialog, which) -> dialog.dismiss()).show();
+                });
+        }
     }
 
     private boolean allowed(Uri uri) {
