@@ -54,6 +54,11 @@ export async function readModelStream(
         if (choice?.finish_reason === "stop") stopped = true;
         if (typeof choice?.delta?.content === "string")
           content += choice.delta.content;
+        // Some compatible gateways include the complete message in the final
+        // stream event without sending every intermediate content delta.
+        if (typeof choice?.message?.content === "string" &&
+            choice.message.content.startsWith(content))
+          content = choice.message.content;
         if (content.length > 4096) throw new Error("model_reply_too_large");
         const draft = partialReply(content).slice(0, 500);
         if (draft && draft !== previous) {

@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
@@ -26,6 +27,7 @@ import { actorDraftCanSurface, actorIsGrounded, actorReference } from "./actor-g
 
 @Injectable()
 export class FreeformService {
+  private readonly logger = new Logger(FreeformService.name);
   private readonly pending = new Map<
     string,
     Promise<FreeformActionResultDto>
@@ -87,6 +89,7 @@ export class FreeformService {
           (await this.ai.analyze(input.freeformText, state)),
       );
     } catch {
+      this.logger.warn("ai_stage=intent outcome=fallback");
       analysis = nluAnalysisSchema.parse({
         matchedActionId: "converse", confidence: 1,
         markers: { polite: false, empathy: false, rude: false, safetyViolation: false },
@@ -165,8 +168,11 @@ export class FreeformService {
     ) {
       actor = proposed;
       actorFallback = false;
+    } else {
+      this.logger.warn("ai_stage=grounding outcome=rejected");
     }
     } catch {
+      this.logger.warn("ai_stage=actor outcome=fallback");
       /* Keep a grounded fallback if the model fails. */
     }
     const committedCommand = { ...command, actorReply: actor.reply };

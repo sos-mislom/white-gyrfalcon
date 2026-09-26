@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import {
@@ -34,20 +34,21 @@ const completionSchema = z.object({
 
 @Injectable()
 export class AiAdapterService {
-  readonly name = process.env.AI_MODEL_NAME ?? "Qwen3-1.7B-Q4_K_M";
+  private readonly logger = new Logger(AiAdapterService.name);
   private active = 0;
 
   async analyze(text: string, state: SessionStateDto): Promise<NluAnalysisDto> {
     const scenario = getScenario(state.scenarioId);
     if (!scenario) throw new ServiceUnavailableException({ code: "unknown_scenario" });
     const actions = ["unknown", ...state.availableActions.map((a) => a.id)] as [string, ...string[]];
+    const marker = z.union([z.boolean(), z.number().min(0).max(1)]);
 
     const schema = z.strictObject({
       a: z.enum(actions as any),
       c: z.number().min(0).max(1),
-      p: z.boolean(),
-      e: z.boolean(),
-      r: z.boolean(),
+      p: marker,
+      e: marker,
+      r: marker,
       why: z.string().min(1).max(160),
     });
 
@@ -63,16 +64,17 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
       instruction,
       { employee_text: text },
       state.seed,
-      110,
+      256,
+      { stage: "intent", timeoutMs: 15000, reasoningEffort: "low" },
     );
     const confidence = result.a === "unknown" ? 0 : Math.max(0.8, result.c);
     return nluAnalysisSchema.parse({
       matchedActionId: result.a,
       confidence,
       markers: {
-        polite: result.p,
-        empathy: result.e,
-        rude: result.r,
+        polite: markerValue(result.p),
+        empathy: markerValue(result.e),
+        rude: markerValue(result.r),
         safetyViolation: Boolean(scenario.incident.branches.find(b => b.action_id === result.a)?.is_violation),
       },
       explanation: result.why,
@@ -133,30 +135,20 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
       `Не придумывай новые факты (полиция, прибытие). Не повторяй предыдущий ответ пассажира.`,
       `JSON: {"reply":"..."}`,
     ].join("\n");
-    const generateReply = (remote: boolean) => this.generate(
+    const result = await this.generate(
       z.strictObject({ reply: actorResponseSchema.shape.reply }),
       instruction,
       { action: lastAction, outcome: state.outcome },
       state.seed + state.appliedActions.length,
-      remote ? 512 : 120,
+      512,
       {
         onDraft,
         creative: true,
-        ...(remote ? {
-          endpoint: process.env.AI_ACTOR_BASE_URL,
-          model: process.env.AI_ACTOR_MODEL_NAME,
-          apiKeyFile: process.env.AI_ACTOR_API_KEY_FILE,
-          reasoningEffort: "low" as const,
-        } : {}),
+        reasoningEffort: "low",
+        stage: "actor",
+        timeoutMs: 25000,
       },
     );
-    let result: { reply: string };
-    try {
-      result = await generateReply(Boolean(process.env.AI_ACTOR_BASE_URL));
-    } catch (error) {
-      if (!process.env.AI_ACTOR_BASE_URL) throw error;
-      result = await generateReply(false);
-    }
     return { reply: result.reply, consequenceId: consequence.id };
   }
 
@@ -169,23 +161,25 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
     options: {
       onDraft?: (text: string) => void;
       creative?: boolean;
-      endpoint?: string;
-      model?: string;
-      apiKeyFile?: string;
       reasoningEffort?: "low";
+      stage?: "intent" | "actor";
+      timeoutMs?: number;
     } = {},
   ): Promise<T> {
-    const endpoint = options.endpoint ?? process.env.AI_BASE_URL;
-    if (!endpoint || this.active >= 2)
+    const endpoint = process.env.AI_ACTOR_BASE_URL;
+    if (!endpoint || this.active >= 8)
       throw new ServiceUnavailableException({ code: "model_unavailable" });
     this.active++;
+    const started = Date.now();
+    let outcome = "ok";
     try {
       const base = endpoint.replace(/\/+$/, "");
       const completionUrl = `${base}${base.endsWith("/v1") ? "" : "/v1"}/chat/completions`;
-      const apiKey = options.apiKeyFile
-        ? readFileSync(options.apiKeyFile, "utf8").trim()
-        : process.env.AI_API_KEY;
-      const response = await fetch(completionUrl, {
+      const apiKey = process.env.AI_ACTOR_API_KEY_FILE
+        ? readFileSync(process.env.AI_ACTOR_API_KEY_FILE, "utf8").trim()
+        : process.env.AI_ACTOR_API_KEY;
+      const signal = AbortSignal.timeout(options.timeoutMs ?? 25000);
+      const request: RequestInit = {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -193,9 +187,9 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
             ? { Authorization: `Bearer ${apiKey}` }
             : {}),
         },
-        signal: AbortSignal.timeout(45000),
+        signal,
         body: JSON.stringify({
-          model: options.model ?? this.name,
+          model: process.env.AI_ACTOR_MODEL_NAME ?? "timeweb/gpt-oss-120b",
           stream: Boolean(options.onDraft),
           messages: [
             {
@@ -222,7 +216,15 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
           cache_prompt: true,
           max_tokens: maxTokens,
         }),
-      });
+      };
+      let response: Response;
+      try {
+        response = await fetch(completionUrl, request);
+      } catch (error) {
+        if (!(error instanceof TypeError) || signal.aborted) throw error;
+        this.logger.warn(`ai_stage=${options.stage ?? "unknown"} outcome=reconnect`);
+        response = await fetch(completionUrl, request);
+      }
       if (!response.ok) throw new Error("model_http_error");
       if (options.onDraft)
         return schema.parse(
@@ -233,11 +235,28 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
       if (completion.finish_reason !== "stop")
         throw new Error("model_truncated");
       return schema.parse(JSON.parse(completion.message.content));
-    } catch {
-      // Never log raw employee text, prompts, environment or upstream response bodies.
+    } catch (error) {
+      outcome = modelFailureKind(error);
       throw new ServiceUnavailableException({ code: "model_unavailable" });
     } finally {
       this.active--;
+      // Stage and timing only. Never log prompts, player text, credentials or model output.
+      this.logger.log(`ai_stage=${options.stage ?? "unknown"} outcome=${outcome} duration_ms=${Date.now() - started}`);
     }
   }
+}
+
+function modelFailureKind(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === "TimeoutError" || error.name === "AbortError") return "timeout";
+    if (error.name === "ZodError" || error.name === "SyntaxError") return "invalid_response";
+    if (error.message === "model_http_error") return "http_error";
+    if (error.message === "model_truncated" || error.message === "model_stream_truncated") return "truncated";
+    if (error.name === "TypeError") return "network_error";
+  }
+  return "unavailable";
+}
+
+function markerValue(value: boolean | number): boolean {
+  return typeof value === "boolean" ? value : value >= 0.5;
 }

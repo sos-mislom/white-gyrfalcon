@@ -15,7 +15,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 it("expands the compact model reply to the unchanged public NLU contract", async () => {
-  vi.stubEnv("AI_BASE_URL", "http://model.test");
+  vi.stubEnv("AI_ACTOR_BASE_URL", "http://model.test");
   vi.stubGlobal(
     "fetch",
     vi.fn(
@@ -28,9 +28,9 @@ it("expands the compact model reply to the unchanged public NLU contract", async
                   content: JSON.stringify({
                     a: "explain_rules",
                     c: 0.95,
-                    p: true,
-                    e: true,
-                    r: false,
+                    p: 0.9,
+                    e: 0.7,
+                    r: 0.0,
                     why: "Отказ в посадке с предложением помощи.",
                   }),
                 },
@@ -64,7 +64,7 @@ it("expands the compact model reply to the unchanged public NLU contract", async
   });
 });
 it("sends heard speech, markers, character and the engine's actual d20 to the actor", async () => {
-  vi.stubEnv("AI_BASE_URL", "http://model.test");
+  vi.stubEnv("AI_ACTOR_BASE_URL", "http://model.test");
   let state = createSession({
     scenarioId: "boarding_no_ticket",
     mode: "training",
@@ -126,46 +126,56 @@ it("sends heard speech, markers, character and the engine's actual d20 to the ac
   expect(request.messages[0].content).toContain(state.checks.at(-1)!.outcome);
 });
 
-it("uses the agent secret only for actor requests and falls back to the local model", async () => {
+it("uses the agent for both intent and actor, without a local model retry", async () => {
   const directory = mkdtempSync(join(tmpdir(), "vsm-actor-key-"));
   try {
     const keyFile = join(directory, "token");
     writeFileSync(keyFile, "test-agent-token\n");
-    vi.stubEnv("AI_BASE_URL", "http://local-model.test");
-    vi.stubEnv("AI_API_KEY", "");
     vi.stubEnv("AI_ACTOR_BASE_URL", "https://agent.timeweb.cloud/agent/v1");
     vi.stubEnv("AI_ACTOR_MODEL_NAME", "timeweb/gpt-oss-120b");
     vi.stubEnv("AI_ACTOR_API_KEY_FILE", keyFile);
-    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) =>
-      url.startsWith("https://")
-        ? new Response(null, { status: 502 })
-        : new Response(JSON.stringify({
-            choices: [{ message: { content: JSON.stringify({ reply: "Я вас услышал." }) }, finish_reason: "stop" }],
-          })),
-    );
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(null, { status: 502 }));
     vi.stubGlobal("fetch", fetchMock);
     const state = createSession({ scenarioId: "boarding_no_ticket", mode: "training", difficulty: 1, seed: 42 });
-    const result = await new AiAdapterService().act(state, allowedConsequences(state), {
+    const adapter = new AiAdapterService();
+    await expect(adapter.analyze("Покажите билет, пожалуйста.", state)).rejects.toThrow();
+    await expect(adapter.act(state, allowedConsequences(state), {
       employee_speech: "Покажите билет, пожалуйста.",
       markers: { polite: true, empathy: false, rude: false, safetyViolation: false },
-    });
-    expect(result.reply).toBe("Я вас услышал.");
+    })).rejects.toThrow();
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
       "https://agent.timeweb.cloud/agent/v1/chat/completions",
-      "http://local-model.test/v1/chat/completions",
+      "https://agent.timeweb.cloud/agent/v1/chat/completions",
     ]);
-    const remoteHeaders = fetchMock.mock.calls[0]![1]?.headers as Record<string, string>;
-    const localHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
-    const remoteBody = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
-    const localBody = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body));
-    expect(remoteHeaders.Authorization).toBe("Bearer test-agent-token");
-    expect(localHeaders.Authorization).toBeUndefined();
-    expect(remoteBody).toMatchObject({ model: "timeweb/gpt-oss-120b", reasoning_effort: "low", max_tokens: 512 });
-    expect(localBody.max_tokens).toBe(120);
-    expect(localBody.reasoning_effort).toBeUndefined();
+    for (const call of fetchMock.mock.calls) {
+      const headers = call[1]?.headers as Record<string, string>;
+      expect(headers.Authorization).toBe("Bearer test-agent-token");
+    }
+    const intentBody = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
+    const actorBody = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body));
+    expect(intentBody).toMatchObject({ model: "timeweb/gpt-oss-120b", reasoning_effort: "low", max_tokens: 256 });
+    expect(actorBody).toMatchObject({ model: "timeweb/gpt-oss-120b", reasoning_effort: "low", max_tokens: 512 });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+it("reconnects once after a transient provider network failure", async () => {
+  vi.stubEnv("AI_ACTOR_BASE_URL", "https://agent.timeweb.cloud/agent/v1");
+  const fetchMock = vi.fn()
+    .mockRejectedValueOnce(new TypeError("connection_reset"))
+    .mockResolvedValueOnce(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({ reply: "Я слушаю вас." }) }, finish_reason: "stop" }],
+    })));
+  vi.stubGlobal("fetch", fetchMock);
+  const state = createSession({ scenarioId: "boarding_no_ticket", mode: "training", difficulty: 1, seed: 42 });
+  const result = await new AiAdapterService().act(state, allowedConsequences(state), {
+    employee_speech: "Здравствуйте.",
+    markers: { polite: true, empathy: false, rude: false, safetyViolation: false },
+  });
+  expect(result.reply).toBe("Я слушаю вас.");
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock.mock.calls[0]?.[0]).toBe(fetchMock.mock.calls[1]?.[0]);
 });
 
 it("keeps the passenger role and the named help destination", () => {

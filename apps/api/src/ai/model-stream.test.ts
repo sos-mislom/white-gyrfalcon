@@ -43,3 +43,14 @@ it("streams Russian reply across arbitrary UTF-8 byte boundaries and requires co
     "truncated",
   );
 });
+
+it("accepts a complete message in the final compatible stream event", async () => {
+  const reply = JSON.stringify({ reply: "Спасибо. Я подожду." });
+  const wire = `data: ${JSON.stringify({ choices: [{ delta: { role: "assistant" } }] })}\n\n`
+    + `data: ${JSON.stringify({ choices: [{ message: { content: reply }, finish_reason: "stop" }] })}\n\n`
+    + "data: [DONE]\n\n";
+  const drafts: string[] = [];
+  const result = await readModelStream(new Response(wire), text => drafts.push(text));
+  expect(JSON.parse(result)).toEqual({ reply: "Спасибо. Я подожду." });
+  expect(drafts).toContain("Спасибо. Я подожду.");
+});
