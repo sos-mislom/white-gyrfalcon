@@ -201,4 +201,5 @@ it("rejects a passenger who recites the conductor's boarding rule during small t
   const reply = { consequenceId: "continue", reply: "Чувствую себя нормально, однако без действительного билета посадка невозможна." };
   expect(actorIsGrounded(state, reply, "Как настроение?")).toBe(false);
   expect(actorDraftCanSurface(state, reply.reply)).toBe(false);
+  expect(actorIsGrounded(state, { consequenceId: "continue", reply: "Ваш терминал отказался принимать карту." }, "Как настроение?")).toBe(false);
 });
