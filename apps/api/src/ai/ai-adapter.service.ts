@@ -13,7 +13,7 @@ import {
 import {
   getScenario,
 } from "@vsm/simulation-core";
-import { currentEmotionalCheck } from "./actor-grounding";
+import { buildActorContext } from "./actor-context";
 import { readModelStream } from "./model-stream";
 
 export interface ActorInput {
@@ -96,54 +96,8 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
     onDraft?: (text: string) => void,
   ): Promise<ActorResponseDto> {
     const consequence = allowedConsequences[0]!;
-    const scenario = getScenario(state.scenarioId);
-    const character = scenario?.interactions?.actors.find(actor => actor.id === state.currentActorId) ?? scenario?.character;
     const lastAction = state.appliedActions.at(-1)?.actionId ?? "wait";
-    const emotionalCheck = currentEmotionalCheck(state)?.outcome ?? "none";
-    if (!scenario) throw new ServiceUnavailableException({ code: "unknown_scenario" });
-    // A: Role-lock — identity declared first as hard imperative before any facts
-    const identity = character
-      ? `${character.name} (${character.role}). Характер: ${character.archetype}`
-      : "пассажир поезда";
-    const facts = scenario.incident.context_description ?? scenario.title;
-    const actorVector = character?.dialogue_vector ? `Личный мотив: ${character.dialogue_vector}` : "";
-    const direction = lastAction === "wait" ? scenario.incident.escalation.idle_vector
-      : lastAction === "converse" ? scenario.incident.escalation.conversation_vector
-      : scenario.incident.branches.find(b => b.action_id === lastAction)?.intent_label ?? "Реагируй на последнее действие.";
-
-    // C: Compact 3-turn history from appliedActions (utterance + actorReply)
-    const historyTurns = state.appliedActions.slice(-3).map((a, i) => {
-      const stepNum = state.appliedActions.length - Math.min(3, state.appliedActions.length) + i + 1;
-      return `Ход ${stepNum}: сотрудник[${a.actionId}]: «${(a.utterance ?? "—").slice(0, 80)}» → пассажир: «${(a.actorReply ?? "—").slice(0, 80)}»`;
-    });
-    const history = historyTurns.length > 0 ? historyTurns.join("\n") : "Диалог только начался.";
-
-    // B: Conductor's actual words embedded in system prompt, not just user JSON payload
-    const instruction = [
-      `=== РОЛЬ ===`,
-      `Ты — ${identity}. Ты ПАССАЖИР. Не сотрудник, не нарратор, не судья.`,
-      `НИКОГДА не выходи из роли. ТОЛЬКО живая реплика пассажира, от первого лица.`,
-      ``,
-      `=== КОНТЕКСТ ===`,
-      `Ситуация: ${facts}`,
-      actorVector,
-      `Вектор реакции: ${direction}`,
-      `Эмоция персонажа: ${emotionalCheck}. Грубость сотрудника: ${input.markers.rude}.`,
-      `Исход (факты, не текст для копирования): ${consequence.description}`,
-      ``,
-      `=== ИСТОРИЯ ДИАЛОГА ===`,
-      history,
-      ``,
-      `=== ПОСЛЕДНЯЯ РЕПЛИКА СОТРУДНИКА ===`,
-      `«${input.employee_speech.slice(0, 150)}»`,
-      ``,
-      `=== ПРАВИЛА ===`,
-      `Ответь одной репликой до 25 слов, от первого лица.`,
-      `Реагируй именно на последние слова сотрудника. Не повторяй его фразы дословно.`,
-      `Не обещай «проверю», «помогу», «уточню» — это роль сотрудника.`,
-      `Не придумывай новые факты (полиция, прибытие). Не повторяй предыдущий ответ пассажира.`,
-      `JSON: {"reply":"..."}`,
-    ].join("\n");
+    const instruction = buildActorContext(state, consequence, input);
     const result = await this.generate(
       z.strictObject({ reply: actorResponseSchema.shape.reply }),
       instruction,
