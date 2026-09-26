@@ -1,0 +1,112 @@
+scenario_id: vsm_env_fire_suppression_01
+menu_label: Тревога в электрощитовой
+type: environmental_emergency
+title: Сработка СПТ в электрощитовой
+visual:
+  background: carriage
+location:
+  car_number: 2
+  class_type: business
+  zone: Торец вагона, щитовой отсек
+character: null
+incident:
+  category: critical_emergency
+  urgency: critical
+  difficulty_dc: 16
+  trigger_event: Короткое замыкание — сработала СПТ. Из щитового отсека видна струйка белого дыма. Оглушительная
+    сирена. Запах горелой изоляции.
+  sop_reference: Приказ Минтранса № 352, п. 11(1)
+  required_tools:
+  - radio_bridge
+  - fire_extinguisher_ou5
+  - triangle_key
+  - flashlight
+  branches:
+  - action_id: act_full_fire_protocol
+    intent_label: PA + связь с машинистом + огнетушитель наготове
+    example_phrases:
+    - 'Внимание, пассажиры! Сохраняйте спокойствие, остайтесь на местах! (По рации машинисту: «Вагон 2, сработка
+      СПТ в щитовом отсеке, визуально — дым из-под двери, запах горелой изоляции, принимаю меры, жду команду.»)'
+    sop_bonus: 6
+    outcomes:
+      critical_success:
+        system_narrative: Машинист снижает скорость. СПТ погасила очаг штатно. Через 18 минут состав добрался до
+          Бологое.
+        safety_delta: 40
+        procedure_delta: 35
+        service_delta: 10
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        system_narrative: Протокол выполнен. Небольшая задержка — рацию нашёл через 90 секунд вместо 30.
+        safety_delta: 25
+        procedure_delta: 20
+        service_delta: 5
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        system_narrative: Стюард побежал смотреть, не вызвав машиниста. Открыл дверь щитового — дым усилился.
+        safety_delta: -20
+        procedure_delta: -20
+        service_delta: -10
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        system_narrative: Стюард попытался тушить огнетушителем через открытую дверь без доклада. Кислород попал
+          в отсек — пламя усилилось.
+        safety_delta: -80
+        procedure_delta: -60
+        service_delta: -30
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 4
+    deadline_minutes: 10
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+  initial_speech: Произошла нештатная ситуация. Оцените обстановку.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 11(1)
+  url: https://publication.pravo.gov.ru/Document/View/0001202503140005
+  application: Пассажир выполняет указания персонала по безопасности оборудования ВСМ. Пожарный алгоритм — учебное
+    допущение.

@@ -1,86 +1,77 @@
-import type { ActorResponseDto, SessionStateDto } from "@vsm/api-contracts";
-import { memoryAwareReply } from "@vsm/simulation-core";
+import type { ActorResponseDto, ScenarioDefinitionDto, SessionStateDto } from "@vsm/api-contracts";
+import { getScenario } from "@vsm/simulation-core";
 
 export function currentEmotionalCheck(state: SessionStateDto) {
-  return state.outcome === "active" &&
-    state.appliedActions.at(-1)?.actionId === "offer_help" &&
-    state.events.some(
-      (event) =>
-        event.type === "check_resolved" &&
-        event.atMinute === state.currentTimeMinutes,
-    )
-    ? state.checks.at(-1)
-    : undefined;
+  return state.events.some(event => event.type === "check_resolved" && event.atMinute === state.currentTimeMinutes)
+    ? state.checks.at(-1) : undefined;
 }
 
-function deskNumber(speech: string) {
-  return /касс[а-яё]*\s*(?:№\s*)?(\d{1,3})/iu.exec(speech)?.[1];
+/** Used only when the model is unavailable. No scene-specific final lines. */
+export function actorReference(state: SessionStateDto, _speech: string): string {
+  return state.outcome === "resolved" ? "Спасибо за помощь."
+    : state.outcome === "failed" ? "Подождите, мне всё ещё нужна помощь."
+    : "Я слушаю. Что будем делать дальше?";
 }
 
-// Rendering hints/fallback only. These functions cannot modify state or scores.
-export function actorReference(state: SessionStateDto, speech: string): string {
-  const desk = deskNumber(speech);
-  const destination = desk ? `кассу №${desk}` : "указанное вами место";
-  const check = currentEmotionalCheck(state);
-  if (check)
-    return {
-      critical_success: `Большое спасибо за участие, вы очень помогли! Обращусь в ${destination}.`,
-      success: `Ладно, пойду в ${destination}, хотя времени совсем мало.`,
-      failure: `В ${destination}? Боюсь не успеть! Позовите начальника поезда.`,
-      critical_failure: `В ${destination}?! Я буду жаловаться! Почему я должен бегать из-за ошибки?`,
-    }[check.outcome];
-  if (
-    state.outcome === "active" &&
-    state.appliedActions.at(-1)?.actionId === "explain_rules" &&
-    desk
-  )
-    return `Понимаю, без билета нельзя. Мне нужно обратиться в кассу №${desk}?`;
-  return memoryAwareReply(state) ?? state.passengerReply;
-}
-
-export function actorIsGrounded(
-  state: SessionStateDto,
-  actor: ActorResponseDto,
-  speech: string,
-): boolean {
-  if (state.outcome === "active") {
-    if (
-      state.completedActionIds.includes("explain_rules") &&
-      /почему[^.!?]{0,50}не (?:пуска|пуст|разреш)|разве[^.!?]{0,40}списани|как (?:же )?мне уехать/iu.test(
-        actor.reply,
-      )
-    )
-      return false;
-    if (
-      state.completedActionIds.includes("offer_help") &&
-      /куда (?:же |мне )?(?:идти|пойти|обрат|обращ)|где (?:же |находится )?касса|к кому (?:мне )?обрат/iu.test(
-        actor.reply,
-      )
-    )
-      return false;
-  }
-  const check = currentEmotionalCheck(state);
-  if (check) {
-    const anchors = {
-      critical_success: /спасибо|благодар/iu,
-      success: /ладно|пойду|обращусь|соглас|хорошо/iu,
-      failure: /начальник/iu,
-      critical_failure: /жалоб|жалова/iu,
-    };
-    if (!anchors[check.outcome].test(actor.reply)) return false;
-  }
-  const desk = deskNumber(speech);
-  if (
-    desk &&
-    (check || state.appliedActions.at(-1)?.actionId === "explain_rules") &&
-    deskNumber(actor.reply) !== desk
-  )
+export function actorDraftCanSurface(state: SessionStateDto, draft: string): boolean {
+  if (draft.length < 12) return false;
+  if (!/[.!?](?:\s|$)/u.test(draft)) return false;
+  const scene = getScenario(state.scenarioId);
+  if (!scene) return false;
+  if (/^(?:я не могу вас посадить|посадка без билета|без билета посадка|покажите (?:мне )?билет|я разрешаю вам|пройдите|обратитесь)/iu.test(draft))
     return false;
-  if (
-    actor.consequenceId === "police_custody" &&
-    (!/помогите|охран|полици/iu.test(actor.reply) ||
-      /арестован|задержан|уже\s+прибыл/iu.test(actor.reply))
-  )
+  const first = draft.split(/[.!?]/u)[0] ?? draft;
+  const action = state.appliedActions.at(-1)?.actionId;
+  if (soundsLikeEmployee(first) || repeatsEmployee(first, state.appliedActions.at(-1)?.utterance)) return false;
+  if (forbiddenReply(scene.grounding, action, first)) return false;
+  const required = action && scene.grounding?.required_terms_by_action[action];
+  return !required || new RegExp(required, "iu").test(first);
+}
+
+export function actorIsGrounded(state: SessionStateDto, actor: ActorResponseDto, speech: string): boolean {
+  const scene = getScenario(state.scenarioId);
+  if (!scene) return false;
+  const reply = actor.reply.trim();
+  if (!reply || /^(?:покажите|предъявите|пройдите|обратитесь|посадка без билета|без билета посадка|я не могу вас посадить|я разрешаю)/iu.test(reply))
+    return false;
+  if (soundsLikeEmployee(reply) || repeatsEmployee(reply, speech)) return false;
+  const action = state.appliedActions.at(-1)?.actionId;
+  if (actor.consequenceId !== "safety_threat" && forbiddenReply(scene.grounding, action, reply))
+    return false;
+  const previous = state.appliedActions.at(-2);
+  if (previous?.actorReply && previous.actionId !== action &&
+    previous.actorReply.toLocaleLowerCase("ru").replace(/[^\p{L}\p{N}]/gu, "") ===
+      reply.toLocaleLowerCase("ru").replace(/[^\p{L}\p{N}]/gu, ""))
+    return false;
+  const required = action && scene.grounding?.required_terms_by_action[action];
+  if (required && !new RegExp(required, "iu").test(reply)) return false;
+  if (actor.consequenceId === "safety_threat" && /(?:уже\s+прибыл|арестован|задержан)/iu.test(reply))
     return false;
   return true;
+}
+
+function soundsLikeEmployee(text: string): boolean {
+  return /(?:^|[.!?]\s*)(?:я\s+)?(?:проверю|посмотрю|уточню|помогу|оформлю|направлю|свяжусь|разберусь|разрешаю|объясню|получу\s+информацию\s+и\s+помогу)(?![\p{L}])/iu.test(text)
+    || /(?:ваши?\s+(?:данные|билет|заказ)\s+(?:не\s+)?(?:подтверждены|числятся))|(?:нужно\s+проверить\s+ваши?\s+(?:данные|билет))/iu.test(text);
+}
+
+function repeatsEmployee(reply: string, speech: string | undefined): boolean {
+  if (!speech) return false;
+  const normalized = (value: string) => value.toLocaleLowerCase("ru").replaceAll("ё", "е")
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const heard = normalized(speech);
+  const answer = normalized(reply);
+  return heard.length >= 20 && (answer === heard || answer.startsWith(`${heard} `));
+}
+
+function forbiddenReply(
+  grounding: ScenarioDefinitionDto['grounding'],
+  action: string | undefined,
+  text: string,
+): boolean {
+  const patterns = [
+    ...(grounding?.forbidden_reply_patterns ?? []),
+    ...(action ? grounding?.forbidden_reply_patterns_by_action[action] ?? [] : []),
+  ];
+  return patterns.some(pattern => new RegExp(pattern, "iu").test(text));
 }

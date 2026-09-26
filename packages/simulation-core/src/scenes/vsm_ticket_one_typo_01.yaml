@@ -1,0 +1,99 @@
+scenario_id: vsm_ticket_one_typo_01
+menu_label: Одна цифра в билете
+type: character
+title: Одна ошибка в номере документа
+visual:
+  background: carriage
+location:
+  car_number: 2
+  class_type: standard
+  zone: Посадка, вагон 2
+character:
+  portrait_key: sergey
+  id: char_vsm_ticket_one_typo_01
+  name: Алексей
+  role: Пассажир с опечаткой в билете
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: male
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: В билете пассажира одна переставленная цифра номера паспорта;
+    остальные данные совпадают.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 81
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Одна допустимая ошибка в номере документа сама по себе не препятствует посадке.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: У меня в билете две цифры местами поменяны. Остальное совпадает. Меня пустят?
+  context_description: В билете пассажира одна переставленная цифра номера паспорта; остальные данные совпадают.
+  sop_reference: Приказ Минтранса № 352, п. 81
+  required_tools: []
+  branches:
+  - action_id: check_permitted_typo
+    intent_label: Одна допустимая ошибка в номере документа сама по себе не препятствует посадке.
+    example_phrases:
+    - 'Сверю билет с паспортом: при одной такой ошибке правила допускают проезд.'
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Алексей принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: reject_single_typo
+    intent_label: Из-за одной переставленной цифры я вас не пущу, покупать новый билет обязательно.
+    example_phrases:
+    - Из-за одной переставленной цифры я вас не пущу, покупать новый билет обязательно.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Алексей указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.
+    failure_vector: Алексей так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Алексей возражает против предложенного шага и просит проверить правило.
+    idle_vector: Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.
+    conversation_vector: Алексей отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

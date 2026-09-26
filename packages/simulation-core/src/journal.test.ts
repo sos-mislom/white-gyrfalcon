@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ENGINE_VERSION, type SyncSessionDto } from "@vsm/api-contracts";
 import { mergeJournal, replaySession, applyAction } from "./index";
 
-it("keeps old saved rules readable while new boarding checks reduce safety", () => {
+it("rejects old journals explicitly after the declarative scene upgrade", () => {
   const journal: SyncSessionDto = {
     engineVersion: "boarding-2",
     setup: {
@@ -20,7 +20,7 @@ it("keeps old saved rules readable while new boarding checks reduce safety", () 
     ],
   };
   const id = crypto.randomUUID();
-  expect(replaySession(id, journal).scores.safety).toBe(100);
+  expect(() => replaySession(id, journal)).toThrow("engine_version_mismatch");
   expect(
     replaySession(id, { ...journal, engineVersion: ENGINE_VERSION }).scores
       .safety,

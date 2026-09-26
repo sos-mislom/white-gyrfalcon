@@ -21,13 +21,13 @@ import {
   submitActionSchema,
   sessionStateSchema,
   syncSessionSchema,
+  type SyncSessionDto,
   submitFreeformActionSchema,
   freeformActionResultSchema,
   type SubmitFreeformActionDto,
   type CreateSessionDto,
   type SessionStateDto,
   type SubmitActionDto,
-  type SyncSessionDto,
 } from "@vsm/api-contracts";
 import type { FastifyReply } from "fastify";
 import type { FreeformStreamEventDto } from "@vsm/api-contracts";
@@ -174,7 +174,10 @@ export class SessionsController {
   sync(
     @Param("sessionId", new ParseUUIDPipe()) sessionId: string,
     @Body(new ZodValidationPipe(syncSessionSchema)) journal: SyncSessionDto,
+    @Headers("x-vsm-device-id") deviceId?: string,
   ): Promise<SessionStateDto> {
-    return this.sessions.sync(sessionId, journal);
+    if (deviceId !== undefined && !/^[a-f0-9]{64}$/.test(deviceId))
+      throw new BadRequestException({ code: "invalid_device_id" });
+    return this.sessions.sync(sessionId, journal, deviceId);
   }
 }

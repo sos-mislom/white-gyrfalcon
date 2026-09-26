@@ -3,7 +3,7 @@ import { allowedConsequences, applyAction, createSession } from "./index";
 
 it("all four emotional rolls stay separate from the professional result", () => {
   const seen = new Set<string>();
-  for (let seed = 0; seed < 200 && seen.size < 4; seed++) {
+  for (let seed = 0; seed < 3000 && seen.size < 4; seed++) {
     let state = createSession({
       scenarioId: "boarding_no_ticket",
       mode: "training",
@@ -21,9 +21,9 @@ it("all four emotional rolls stay separate from the professional result", () => 
     const description = allowedConsequences(state)[0]!.description;
     const expected = {
       critical_success: "благодарен",
-      success: "Ворчит",
-      failure: "начальника поезда",
-      critical_failure: "Кричит",
+      success: "Принимает",
+      failure: "Сомневается",
+      critical_failure: "Возмущён",
     };
     expect(description).toContain(expected[check.outcome]);
     expect(state.scores.safety).toBe(100);
@@ -34,7 +34,7 @@ it("all four emotional rolls stay separate from the professional result", () => 
       clientTimestamp: "2026-09-26T00:00:01Z",
     });
     expect(state.outcome).toBe("resolved");
-    expect(state.checks).toHaveLength(1);
+    expect(state.checks).toHaveLength(4);
     expect(allowedConsequences(state)[0]!.description).not.toContain(
       "Эмоция d20",
     );

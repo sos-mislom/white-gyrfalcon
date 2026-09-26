@@ -26,9 +26,16 @@ describe("deterministic d20", () => {
     );
   });
   it("negative passenger reaction never turns correct procedure into failure", () => {
-    const seed = Array.from({ length: 1000 }, (_, value) => value).find(
-      (value) => resolveD20(value, 0, "offer_help", 13, 0, 4).roll === 1,
-    )!;
+    const seed = Array.from({ length: 1000 }, (_, value) => value).find((value) => {
+      const candidate = replaySession(crypto.randomUUID(), {
+        engineVersion: ENGINE_VERSION,
+        setup: { scenarioId: "boarding_no_ticket", mode: "training", difficulty: 1, seed: value },
+        commands: ["ask_for_ticket", "explain_rules", "offer_help"].map(actionId => ({
+          actionId, idempotencyKey: crypto.randomUUID(), clientTimestamp: "2026-09-25T18:00:00Z",
+        })),
+      });
+      return candidate.checks.at(-1)?.outcome === "critical_failure";
+    })!;
     const journal: SyncSessionDto = {
       engineVersion: ENGINE_VERSION,
       setup: {
@@ -50,12 +57,12 @@ describe("deterministic d20", () => {
     };
     const id = crypto.randomUUID();
     const state = replaySession(id, journal);
-    expect(state.checks[0]?.outcome).toBe("critical_failure");
+    expect(state.checks[2]?.outcome).toBe("critical_failure");
     expect(state.passengerLoyalty).toBe(-40);
     expect(state.outcome).toBe("resolved");
     expect(state.scores.procedure).toBe(100);
     expect(state.scores.communication).toBe(100);
-    expect(mergeJournal(id, journal, state).checks).toHaveLength(1);
+    expect(mergeJournal(id, journal, state).checks).toHaveLength(4);
     expect(replaySession(id, journal).checks).toEqual(state.checks);
   });
 });

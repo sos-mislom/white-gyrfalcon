@@ -1,0 +1,152 @@
+scenario_id: vsm_biz_noisy_kids_01
+menu_label: Ребёнок в бизнес-классе
+type: character
+title: Плачущий ребёнок в бизнес-классе
+visual:
+  background: carriage
+location:
+  car_number: 2
+  class_type: business
+  zone: Ряды 5–7, центр вагона
+character:
+  portrait_key: tamara
+  id: char_tamara_noisy_kids
+  name: Тамара Павловна
+  role: Пожилая пассажирка, едет к семье
+  archetype: усталая_пассажирка
+  psychological_state:
+    patience: 25
+    aggression: 45
+    stress: 75
+    alcohol: 0
+  hidden_biases:
+  - Боится, что ей снова не удастся отдохнуть в дороге
+  - Не хочет ругаться с матерью напрямую
+  mood_seed_variants:
+  - tag: не_спала_ночь
+    patience_modifier: -20
+    aggression_modifier: 15
+  voice_profile:
+    pitch: medium
+    speed: 1
+    tone: едкий, сдержанный, с усталостью
+    tts_voice_hint: ru-RU-SvetlanaNeural
+    gender: female
+  dialogue_vector: Просит помочь сохранить спокойствие, не требует высадить ребёнка.
+interactions:
+  actors:
+  - portrait_key: maria_child
+    id: char_mother_with_child
+    name: Мария
+    role: Мать плачущего ребёнка
+    archetype: измотанная_мать
+    psychological_state:
+      patience: 35
+      aggression: 10
+      stress: 80
+      alcohol: 0
+    hidden_biases:
+    - Боится, что окружающие обвинят её в плаче ребёнка
+    voice_profile:
+      gender: female
+      tone: устало, сдержанно
+    dialogue_vector: Хочет успокоить ребёнка и согласна принять посильную помощь, но не может мгновенно прекратить
+      плач.
+    initial_speech: Извините, он плачет уже долго. Я пробовала его успокоить. Подскажите, куда нам можно ненадолго
+      пройти?
+    zone: Ряд 6, место матери
+    callout_after_minutes: 0
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 13
+  initial_speech: Простите, ребёнок плачет уже двадцать минут. Я понимаю, что ему трудно, но и мне тяжело. Можно
+    как-то помочь нам обеим?
+  context_description: Мама с ребёнком 2 лет — ребёнок плачет. Другая пассажирка обращается к стюарду. Не настраивать
+    пассажиров друг против друга.
+  sop_reference: Приказ Минтранса № 352, п. 2
+  required_tools:
+  - service_kit
+  branches:
+  - action_id: act_mediate_quietly
+    intent_label: Деликатно поговорить с обеими пассажирками и найти доступный способ помочь
+    example_phrases:
+    - Я вас понимаю. Сначала уточню, чем помочь маме с ребёнком, затем предложу вам доступный вариант, чтобы было спокойнее. Если есть свободное тихое место, я проверю его.
+    sop_bonus: 4
+    outcomes:
+      critical_success:
+        nps_delta: 25
+        safety_delta: 0
+        procedure_delta: 20
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        nps_delta: 10
+        safety_delta: 0
+        procedure_delta: 15
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        nps_delta: -10
+        safety_delta: 0
+        procedure_delta: 5
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        nps_delta: -35
+        safety_delta: -5
+        procedure_delta: -10
+        status: failed
+        reaction_vector: Межпассажирский конфликт — вмешательство ЛНП.
+    duration_minutes: 1
+    requires:
+    - talk:char_tamara_noisy_kids
+    - talk:char_mother_with_child
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 6
+    deadline_minutes: 14
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 2
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Равный доступ к поездке есть и у семьи с ребёнком; помощь соседям не означает право требовать высадки
+    ребёнка.

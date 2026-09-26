@@ -7,7 +7,7 @@ const threat =
 const threatMention =
   /убив|убить|избить|угроз|угрожа|расправ|покалеч|приконч|зареж|застрел/iu;
 const profanity =
-  /(?<![\p{L}])(?:бляд[ььи]|сука|суки|нахуй|пизд[\p{L}]*|ебан[\p{L}]*)(?![\p{L}])/iu;
+  /(?<![\p{L}])(?:бляд[ььи]|сук[аиу]|(?:на|по)?хуй|охуе[\p{L}]*|пизд[\p{L}]*|еб[ао][\p{L}]*|мудак|долбоеб|пидор)(?![\p{L}])/iu;
 const bribe =
   /(?:дай|дайте|заплати|заплатите|переведи|переведите)\s+(?:мне\s+|лично\s+мне\s+)(?:\d+|денег|деньги|взятку|откат)|(?:хочу|требую|давай|дайте)\s+(?:мне\s+)?(?:взятку|откат)/iu;
 const paymentMention = /взятк|откат/iu;
@@ -45,7 +45,7 @@ export function screenConduct(input: string): ConductScreen | undefined {
       continue;
     // Never apply a severe penalty to quoted/reported/negated speech by keyword alone.
     if (
-      contextGate.test(text) ||
+      contextGate.test(clause) ||
       (threatMatch &&
         /(?:^|\s)не\s+(?:\S+\s+){0,3}$/iu.test(
           clause.slice(0, threatMatch.index),

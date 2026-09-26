@@ -52,7 +52,7 @@ export class MockAiAdapter extends AiAdapterService {
     if (this.actorUnavailable) throw new Error("mock_actor_unavailable");
     return {
       consequenceId: this.actorConsequence ?? allowed[0]!.id,
-      reply: this.actorReply ?? state.passengerReply,
+      reply: this.actorReply ?? "У меня пока нет билета; подскажите следующий шаг.",
     };
   }
 }

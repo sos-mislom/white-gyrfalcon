@@ -1,0 +1,99 @@
+scenario_id: vsm_station_arrival_notice_01
+menu_label: Скоро станция
+type: character
+title: Предупреждение о прибытии
+visual:
+  background: carriage
+location:
+  car_number: 2
+  class_type: standard
+  zone: Ряд 9, перед станцией
+character:
+  portrait_key: tamara
+  id: char_vsm_station_arrival_notice_01
+  name: Лидия
+  role: Пассажирка, выходящая на следующей станции
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: female
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: До станции назначения пассажирки около пятнадцати минут;
+    она волнуется, что пропустит выход.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 97
+  url: https://publication.pravo.gov.ru/Document/View/0001202503140005
+  application: В скоростном и высокоскоростном поезде предупреждают о прибытии не позднее чем за 15 минут.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: Мне выходить на следующей. Вы предупредите, когда готовиться?
+  context_description: До станции назначения пассажирки около пятнадцати минут; она волнуется, что пропустит выход.
+  sop_reference: Приказ Минтранса № 352, п. 97
+  required_tools: []
+  branches:
+  - action_id: announce_arrival_and_help
+    intent_label: В скоростном и высокоскоростном поезде предупреждают о прибытии не позднее чем за 15 минут.
+    example_phrases:
+    - До вашей станции около пятнадцати минут. Мы объявим прибытие; давайте подготовим вещи к выходу.
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Лидия принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Пассажирка собирает сумку и снова спрашивает о времени прибытия.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Пассажирка собирает сумку и снова спрашивает о времени прибытия.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: withhold_arrival_notice
+    intent_label: Следите сами за станциями, предупреждать вас никто не будет.
+    example_phrases:
+    - Следите сами за станциями, предупреждать вас никто не будет.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Лидия указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Пассажирка собирает сумку и снова спрашивает о времени прибытия.
+    failure_vector: Лидия так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Лидия возражает против предложенного шага и просит проверить правило.
+    idle_vector: Пассажирка собирает сумку и снова спрашивает о времени прибытия.
+    conversation_vector: Лидия отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

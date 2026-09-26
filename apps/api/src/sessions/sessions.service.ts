@@ -23,12 +23,23 @@ export class SessionsService {
   constructor(private readonly repository: SessionRepository) {}
 
   create(input: CreateSessionDto): Promise<SessionStateDto> {
-    const session = createSession(input);
+    let session: SessionStateDto;
+    try {
+      session = createSession(input);
+    } catch (error) {
+      if (error instanceof SimulationError)
+        throw new BadRequestException({ code: error.code });
+      throw error;
+    }
     return this.repository.mutate(session.id, () => session);
   }
 
   async getById(id: string): Promise<SessionStateDto> {
     return this.required(await this.repository.get(id));
+  }
+
+  async profileSessions(deviceId: string): Promise<SessionStateDto[]> {
+    return this.repository.profileSessions(deviceId);
   }
 
   applyAction(id: string, action: SubmitActionDto): Promise<SessionStateDto> {
@@ -38,7 +49,15 @@ export class SessionsService {
     });
   }
 
-  sync(id: string, journal: SyncSessionDto): Promise<SessionStateDto> {
+  async sync(id: string, journal: SyncSessionDto, deviceId?: string): Promise<SessionStateDto> {
+    if (deviceId) {
+      try { await this.repository.claimProfileSession(deviceId, id); }
+      catch (error) {
+        if (error instanceof Error && error.message === "profile_owner_conflict")
+          throw new ConflictException({ code: "profile_owner_conflict" });
+        throw error;
+      }
+    }
     return this.mutate(id, (state) => mergeJournal(id, journal, state));
   }
 

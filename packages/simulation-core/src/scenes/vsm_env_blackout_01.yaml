@@ -1,0 +1,108 @@
+scenario_id: vsm_env_blackout_01
+menu_label: Поезд без света
+type: environmental_emergency
+title: Полное обесточивание — ураган свалил опору
+visual:
+  background: carriage
+location:
+  car_number: 0
+  class_type: all_cars
+  zone: Весь состав, перегон Бологое — Новгород
+character: null
+incident:
+  category: critical_emergency
+  urgency: critical
+  difficulty_dc: 14
+  trigger_event: Ураганный ветер повалил опору контактной сети. Тяга пропала. Весь основной свет погас. Кондиционеры
+    выключились. Аварийное аккумуляторное освещение горит. В герметичном вагоне нарастает духота.
+  sop_reference: Приказ Минтранса № 352, п. 10
+  required_tools:
+  - radio_bridge
+  - flashlight
+  branches:
+  - action_id: act_announce_ventilation_info
+    intent_label: PA объявление + инфо о вентиляции и времени ожидания
+    example_phrases:
+    - Уважаемые пассажиры, произошло временное отключение внешнего питания. Аварийная вентиляция работает, воздух
+      есть. Расчётное время восстановления — до 40 минут. Оставайтесь на местах, пейте воду — она в кармашках кресел.
+    sop_bonus: 4
+    outcomes:
+      critical_success:
+        system_narrative: Пассажиры успокоились. Через 32 минуты питание восстановлено.
+        safety_delta: 25
+        procedure_delta: 25
+        service_delta: 20
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        system_narrative: Часть пассажиров нервничает, но слушается.
+        safety_delta: 15
+        procedure_delta: 15
+        service_delta: 10
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        system_narrative: Паника нарастает. Пассажиры толпятся у дверей.
+        safety_delta: -10
+        procedure_delta: 0
+        service_delta: -15
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        system_narrative: Стюард не объявил. Пассажир с клаустрофобией начал ломать дверь.
+        safety_delta: -30
+        procedure_delta: -25
+        service_delta: -30
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 4
+    deadline_minutes: 10
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+  initial_speech: Произошла нештатная ситуация. Оцените обстановку.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 10
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Пассажирам сообщают достоверную доступную информацию. Конкретная схема резервного питания — учебное
+    допущение.

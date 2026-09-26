@@ -4,6 +4,7 @@ import {
   type OnModuleInit,
 } from "@nestjs/common";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { Pool } from "pg";
 import {
   sessionStateSchema,
@@ -49,6 +50,12 @@ export class PostgresSessionRepository
       key uuid PRIMARY KEY, session_id uuid NOT NULL REFERENCES vsm_sessions(id),
       result jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
     )`);
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS vsm_profile_sessions (
+      session_id uuid PRIMARY KEY,
+      device_hash text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )`);
+    await this.pool.query("CREATE INDEX IF NOT EXISTS vsm_profile_sessions_device ON vsm_profile_sessions(device_hash)");
   }
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
@@ -69,6 +76,26 @@ export class PostgresSessionRepository
     } catch {
       return false;
     }
+  }
+  private profileHash(deviceId: string): string {
+    return createHash("sha256").update(deviceId).digest("hex");
+  }
+  async claimProfileSession(deviceId: string, sessionId: string): Promise<void> {
+    const hash = this.profileHash(deviceId);
+    const result = await this.pool.query<{ device_hash: string }>(
+      `INSERT INTO vsm_profile_sessions(session_id, device_hash) VALUES ($1, $2)
+       ON CONFLICT (session_id) DO UPDATE SET device_hash = vsm_profile_sessions.device_hash
+       RETURNING device_hash`, [sessionId, hash],
+    );
+    if (result.rows[0]?.device_hash !== hash) throw new Error("profile_owner_conflict");
+  }
+  async profileSessions(deviceId: string): Promise<SessionStateDto[]> {
+    const result = await this.pool.query<{ state: unknown }>(
+      `SELECT s.state FROM vsm_profile_sessions p JOIN vsm_sessions s ON s.id = p.session_id
+       WHERE p.device_hash = $1 ORDER BY s.created_at DESC LIMIT 200`,
+      [this.profileHash(deviceId)],
+    );
+    return result.rows.map((row) => sessionStateSchema.parse(row.state));
   }
   async get(id: string): Promise<SessionStateDto | undefined> {
     const result = await this.pool.query<{ state: unknown }>(

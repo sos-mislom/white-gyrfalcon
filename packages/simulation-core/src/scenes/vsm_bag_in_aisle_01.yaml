@@ -1,0 +1,99 @@
+scenario_id: vsm_bag_in_aisle_01
+menu_label: Чемодан в проходе
+type: character
+title: Чемодан перекрыл проход
+visual:
+  background: carriage
+location:
+  car_number: 4
+  class_type: standard
+  zone: Центр вагона, ряд 8
+character:
+  portrait_key: igor
+  id: char_vsm_bag_in_aisle_01
+  name: Виктор
+  role: Пассажир с крупным чемоданом
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: male
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: Чемодан стоит в проходе, другие пассажиры не могут свободно
+    пройти.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: пп. 172–174
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Ручную кладь размещают в предназначенных местах; проход и коридор не используют для хранения.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: Полка занята. Я поставил чемодан здесь ненадолго. Он же никому не мешает?
+  context_description: Чемодан стоит в проходе, другие пассажиры не могут свободно пройти.
+  sop_reference: Приказ Минтранса № 352, пп. 172–174
+  required_tools: []
+  branches:
+  - action_id: clear_aisle_and_store
+    intent_label: Ручную кладь размещают в предназначенных местах; проход и коридор не используют для хранения.
+    example_phrases:
+    - Проход должен оставаться свободным. Давайте найдём подходящее место для чемодана.
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Виктор принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: allow_aisle_storage
+    intent_label: Пусть чемодан стоит в проходе до конца поездки.
+    example_phrases:
+    - Пусть чемодан стоит в проходе до конца поездки.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Виктор указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.
+    failure_vector: Виктор так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Виктор возражает против предложенного шага и просит проверить правило.
+    idle_vector: Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.
+    conversation_vector: Виктор отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

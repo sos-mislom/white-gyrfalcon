@@ -1,0 +1,161 @@
+scenario_id: vsm_vip_cold_coffee_01
+menu_label: Остывший кофе
+type: character
+title: Остывший кофе в первом классе
+visual:
+  background: carriage
+location:
+  car_number: 1
+  class_type: first_class
+  zone: Переговорная капсула, место 3A
+character:
+  portrait_key: igor
+  id: char_igor_investor
+  name: Игорь Валентинович
+  role: Инвестиционный директор, везёт договор на 200 млн
+  archetype: властный_VIP
+  psychological_state:
+    patience: 20
+    aggression: 65
+    stress: 90
+    alcohol: 10
+  hidden_biases:
+  - 'Абсолютно уверен: деньги дают право требовать мгновенного исполнения'
+  - Заряжен с утра после конфликта с партнёром
+  mood_seed_variants:
+  - tag: срыв_сделки
+    patience_modifier: -20
+    aggression_modifier: 25
+  - tag: сделка_под_контролем
+    patience_modifier: 15
+    aggression_modifier: -10
+  voice_profile:
+    pitch: low
+    speed: 0.85
+    tone: холодный, веский, с угрозой в каждом слове
+    tts_voice_hint: ru-RU-DmitryNeural
+    gender: male
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 16
+  initial_speech: Вот это — что? Это называется «горячий кофе»? Я платил за первый класс, а не за помои из термоса.
+    У меня совещание через 40 минут в Zoom.
+  context_description: Пассажир первого класса получил кофе ~50°C вместо 70°C. Замена обязательна.
+  sop_reference: Приказ Минтранса № 352, п. 7
+  required_tools:
+  - service_kit
+  branches:
+  - action_id: act_instant_replace_plus_gift
+    intent_label: Мгновенная замена + извинение + комплимент
+    example_phrases:
+    - Прошу прощения — это совершенно недопустимо. Заберу немедленно, принесу свежий через две минуты. Позвольте
+      предложить десерт от шеф-повара пока ждёте.
+    sop_bonus: 4
+    outcomes:
+      critical_success:
+        nps_delta: 20
+        safety_delta: 0
+        procedure_delta: 15
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        nps_delta: 5
+        safety_delta: 0
+        procedure_delta: 15
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        nps_delta: -10
+        safety_delta: 0
+        procedure_delta: 5
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        nps_delta: -30
+        safety_delta: 0
+        procedure_delta: 0
+        status: escalating
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: act_excuse_and_explain
+    intent_label: Оправдываться и объяснять технические причины
+    example_phrases:
+    - Понимаете, у нас скоростной поезд, вибрация, кофемашина работает в особом режиме...
+    sop_bonus: -3
+    outcomes:
+      critical_success:
+        nps_delta: -10
+        safety_delta: 0
+        procedure_delta: -5
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        nps_delta: -20
+        safety_delta: 0
+        procedure_delta: -5
+        status: in_progress
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        nps_delta: -35
+        safety_delta: 0
+        procedure_delta: -15
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        nps_delta: -50
+        safety_delta: 0
+        procedure_delta: -20
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 6
+    deadline_minutes: 14
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 7
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Улучшенный сервис может быть установлен правилами перевозчика; закон сам по себе не гарантирует температуру
+    напитка.

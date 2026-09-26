@@ -29,7 +29,7 @@ export const actionKindSchema = z.enum([
 export type ActionKind = z.infer<typeof actionKindSchema>;
 
 export const createSessionSchema = z.strictObject({
-  scenarioId: z.literal("boarding_no_ticket"),
+  scenarioId: z.string().trim().min(1).max(80),
   mode: sessionModeSchema.default("training"),
   difficulty: z.number().int().min(1).max(3).default(1),
   seed: z.number().int().min(0).max(2_147_483_647).optional(),
@@ -48,10 +48,13 @@ export const submitActionSchema = z.strictObject({
   clientTimestamp: z.string().datetime({ offset: true }),
   conduct: z.literal("violent_threat").optional(),
   communication: communicationSchema.optional(),
+  utterance: z.string().trim().min(1).max(500).optional(),
+  actorReply: z.string().trim().min(1).max(500).optional(),
+  actorId: z.string().trim().min(1).max(80).optional(),
 });
 export type SubmitActionDto = z.infer<typeof submitActionSchema>;
 
-export const ENGINE_VERSION = "boarding-4" as const;
+export const ENGINE_VERSION = "scene-5" as const;
 export const engineVersionSchema = z.enum([
   "boarding-2",
   "boarding-3",
@@ -174,6 +177,7 @@ export const sessionStateSchema = z.object({
   seed: z.number().int().nonnegative(),
   currentTimeMinutes: z.number().nonnegative(),
   currentLocationId: z.string(),
+  currentActorId: z.string().optional(),
   scores: scoreStateSchema,
   passengerLoyalty: z.number().int().min(-100).max(100),
   checks: z.array(checkResultSchema),
@@ -187,11 +191,15 @@ export const sessionStateSchema = z.object({
       clientTimestamp: z.string(),
       conduct: z.literal("violent_threat").optional(),
       communication: communicationSchema.optional(),
+      utterance: z.string().optional(),
+      actorReply: z.string().optional(),
+      actorId: z.string().optional(),
     }),
   ),
   completedActionIds: z.array(z.string()),
+  dialogueSummary: z.string().max(1000).default(""),
   passengerReply: z.string(),
-  outcome: z.enum(["active", "resolved", "failed"]),
+  outcome: z.enum(["active", "resolved", "failed", "abandoned"]),
   availableActions: z.array(
     z.object({
       id: z.string(),
@@ -238,3 +246,160 @@ export const healthResponseSchema = z.object({
   timestamp: z.string().datetime({ offset: true }),
 });
 export type HealthResponseDto = z.infer<typeof healthResponseSchema>;
+
+// Declarative Scenario Contract (JSON / YAML format)
+export const scenarioLocationSchema = z.object({
+  car_number: z.number().int().nonnegative().optional(),
+  class_type: z.string().optional(),
+  zone: z.string().min(1),
+  speed_kmh: z.number().nonnegative().optional(),
+});
+export type ScenarioLocationDto = z.infer<typeof scenarioLocationSchema>;
+
+export const scenarioCharacterPsychologySchema = z.object({
+  patience: z.number().min(0).max(100),
+  aggression: z.number().min(0).max(100),
+  stress: z.number().min(0).max(100),
+  alcohol: z.number().min(0).max(100).optional(),
+});
+export type ScenarioCharacterPsychologyDto = z.infer<
+  typeof scenarioCharacterPsychologySchema
+>;
+
+export const scenarioMoodSeedVariantSchema = z.object({
+  tag: z.string().min(1),
+  patience_modifier: z.number().int(),
+  aggression_modifier: z.number().int(),
+});
+export type ScenarioMoodSeedVariantDto = z.infer<
+  typeof scenarioMoodSeedVariantSchema
+>;
+
+export const scenarioVoiceProfileSchema = z.object({
+  gender: z.enum(["male", "female", "neutral"]).optional(),
+  pitch: z.string().optional(),
+  speed: z.number().optional(),
+  tone: z.string().optional(),
+  tts_voice_hint: z.string().optional(),
+});
+export type ScenarioVoiceProfileDto = z.infer<
+  typeof scenarioVoiceProfileSchema
+>;
+
+export const scenarioCharacterSchema = z.object({
+  id: z.string().min(1),
+  portrait_key: z.enum(["sergey", "elena", "igor", "tamara", "artem", "mikhail", "inna", "maria_child", "dummy"]).default("dummy"),
+  name: z.string().min(1),
+  role: z.string().min(1),
+  archetype: z.string().min(1),
+  psychological_state: scenarioCharacterPsychologySchema,
+  hidden_biases: z.array(z.string()).default([]),
+  mood_seed_variants: z.array(scenarioMoodSeedVariantSchema).optional(),
+  voice_profile: scenarioVoiceProfileSchema.optional(),
+  dialogue_vector: z.string().optional(),
+});
+export type ScenarioCharacterDto = z.infer<typeof scenarioCharacterSchema>;
+
+export const scenarioOutcomeStatusSchema = z.enum([
+  "active",
+  "in_progress",
+  "resolved",
+  "escalating",
+  "failed",
+]);
+export type ScenarioOutcomeStatus = z.infer<typeof scenarioOutcomeStatusSchema>;
+
+export const scenarioOutcomeSchema = z.object({
+  reaction_vector: z.string().min(1),
+  nps_delta: z.number().optional(),
+  safety_delta: z.number().optional(),
+  procedure_delta: z.number().optional(),
+  service_delta: z.number().optional(),
+  status: scenarioOutcomeStatusSchema,
+  note: z.string().optional(),
+});
+export type ScenarioOutcomeDto = z.infer<typeof scenarioOutcomeSchema>;
+
+export const scenarioBranchSchema = z.object({
+  action_id: z.string().min(1),
+  intent_label: z.string().min(1),
+  example_phrases: z.array(z.string()).min(1),
+  match_patterns: z.array(z.string().min(1)).default([]),
+  sop_bonus: z.number().int().default(0),
+  is_violation: z.boolean().optional(),
+  duration_minutes: z.number().positive().default(1),
+  requires: z.array(z.string()).default([]),
+  missing_requirement: z.object({
+    reaction_vector: z.string().min(1),
+    status: scenarioOutcomeStatusSchema.default("escalating"),
+    procedure_delta: z.number().default(-10),
+  }).optional(),
+  outcomes: z.object({
+    critical_success: scenarioOutcomeSchema.nullable().optional(),
+    success: scenarioOutcomeSchema.nullable().optional(),
+    failure: scenarioOutcomeSchema.nullable().optional(),
+    critical_failure: scenarioOutcomeSchema.nullable().optional(),
+  }),
+});
+export type ScenarioBranchDto = z.infer<typeof scenarioBranchSchema>;
+
+export const scenarioDefinitionSchema = z.object({
+  scenario_id: z.string().min(1),
+  aliases: z.array(z.string().min(1)).default([]),
+  featured: z.boolean().default(false),
+  menu_label: z.string().min(1).optional(),
+  type: z.enum([
+    "character",
+    "environmental",
+    "environment",
+    "environmental_emergency",
+    "mixed",
+    "train_system",
+  ]).default("character"),
+  title: z.string().min(1),
+  interactions: z.object({
+    actors: z.array(scenarioCharacterSchema.extend({
+      initial_speech: z.string().min(1),
+      zone: z.string().min(1),
+      callout_after_minutes: z.number().nonnegative().optional(),
+    })).min(1),
+  }).optional(),
+  legal_basis: z.array(z.object({
+    act: z.string().min(1),
+    clause: z.string().min(1),
+    url: z.string().url(),
+    application: z.string().min(1),
+  })).min(1),
+  visual: z.object({ background: z.enum(["departure", "carriage"]) }).default({ background: "carriage" }),
+  grounding: z.object({
+    forbidden_reply_patterns: z.array(z.string()).default([]),
+    forbidden_reply_patterns_by_action: z.record(z.string(), z.array(z.string())).default({}),
+    required_terms_by_action: z.record(z.string(), z.string()).default({}),
+  }).optional(),
+  location: scenarioLocationSchema,
+  character: scenarioCharacterSchema.nullable().optional(),
+  incident: z.object({
+    category: z.string().min(1),
+    urgency: z.enum(["routine", "medium", "high", "critical"]).default("medium"),
+    difficulty_dc: z.number().int().min(5).max(25).default(12),
+    initial_speech: z.string().optional(),
+    context_description: z.string().optional(),
+    sop_reference: z.string().min(1),
+    required_tools: z.array(z.string()).optional(),
+    branches: z.array(scenarioBranchSchema).min(1),
+    escalation: z.object({
+      warning_minutes: z.number().positive(),
+      deadline_minutes: z.number().positive(),
+      warning_vector: z.string().min(1),
+      failure_vector: z.string().min(1),
+      wrong_action_vector: z.string().min(1),
+      idle_vector: z.string().min(1),
+      conversation_vector: z.string().min(1),
+      warning_time_penalty: z.number().nonnegative().default(10),
+      failure_time_penalty: z.number().nonnegative().default(30),
+      wrong_action_penalty: z.number().nonnegative().default(10),
+      idle_time_penalty: z.number().nonnegative().default(10),
+    }),
+  }),
+});
+export type ScenarioDefinitionDto = z.infer<typeof scenarioDefinitionSchema>;

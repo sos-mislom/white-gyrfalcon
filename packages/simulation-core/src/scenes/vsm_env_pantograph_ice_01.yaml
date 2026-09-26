@@ -1,0 +1,108 @@
+scenario_id: vsm_env_pantograph_ice_01
+menu_label: Искры за окном
+type: environmental_emergency
+title: Обледенение пантографа — искрение за окном
+visual:
+  background: carriage
+location:
+  car_number: 0
+  class_type: all_cars
+  zone: Весь состав, перегон Новгород — СПб, зима
+character: null
+incident:
+  category: technical_failure
+  urgency: medium
+  difficulty_dc: 11
+  trigger_event: За окнами видны яркие голубые вспышки и хлопки — пантограф бьётся об обледеневший провод. Скорость
+    плавно падает. Пассажиры испуганы вспышками.
+  sop_reference: Приказ Минтранса № 352, п. 11(1)
+  required_tools:
+  - radio_bridge
+  branches:
+  - action_id: act_reassure_simple
+    intent_label: Спокойно объяснить вспышки простым языком
+    example_phrases:
+    - 'Уважаемые пассажиры, вспышки за окном — это нормальное явление зимой: поезд работает от электросети как трамвай,
+      и при морозе бывает лёгкое искрение. Это не опасно. Мы немного снижаем скорость до нормализации контакта —
+      прибытие задержится на 12–15 минут.'
+    sop_bonus: 3
+    outcomes:
+      critical_success:
+        system_narrative: Пассажиры кивают, достают телефоны фотографировать вспышки.
+        safety_delta: 10
+        procedure_delta: 15
+        service_delta: 20
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        system_narrative: Большинство успокоилось. Несколько переспрашивают.
+        safety_delta: 10
+        procedure_delta: 10
+        service_delta: 10
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        system_narrative: 'Стюард сказал: «Технические проблемы». Пассажир уже пишет «поезд горит» в соцсетях.'
+        safety_delta: 0
+        procedure_delta: 0
+        service_delta: -15
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        system_narrative: Стюард не стал ничего объяснять. Паника распространилась.
+        safety_delta: 0
+        procedure_delta: -10
+        service_delta: -25
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 6
+    deadline_minutes: 14
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+  initial_speech: Произошла нештатная ситуация. Оцените обстановку.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 11(1)
+  url: https://publication.pravo.gov.ru/Document/View/0001202503140005
+  application: Пассажир выполняет указания персонала по безопасности оборудования ВСМ. Действия с токоприёмником
+    — учебное допущение.

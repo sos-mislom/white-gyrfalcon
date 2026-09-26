@@ -1,0 +1,110 @@
+scenario_id: vsm_env_depressurization_01
+menu_label: Шлюз открыт
+type: environmental_emergency
+title: Разгерметизация межвагонного шлюза
+visual:
+  background: carriage
+location:
+  car_number: 3
+  class_type: bistro
+  zone: Межвагонный переход 3→4
+character: null
+incident:
+  category: technical_failure
+  urgency: high
+  difficulty_dc: 13
+  trigger_event: Резкий перепад давления — у пассажиров закладывает уши. Из межвагонного перехода слышен свистящий
+    звук. Несколько пассажиров жалуются на боль в ушах и головокружение.
+  sop_reference: Приказ Минтранса № 352, п. 11(1)
+  required_tools:
+  - radio_bridge
+  - triangle_key
+  branches:
+  - action_id: act_seal_and_report
+    intent_label: Задраить переход + доложить ПЭМ + объяснить пассажирам
+    example_phrases:
+    - '(По рации ПЭМ: «Вагон 3-4, свистящий звук из перехода, давление снижено, пассажиры жалуются на уши, прошу
+      вашей помощи.»). (Пассажирам:) Небольшой технический момент — механики уже реагируют. Закройте рот и зевните
+      — это поможет с ушами.'
+    sop_bonus: 3
+    outcomes:
+      critical_success:
+        system_narrative: ПЭМ прибыл за 4 минуты, устранил негерметичность уплотнителя.
+        safety_delta: 20
+        procedure_delta: 20
+        service_delta: 15
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        system_narrative: ПЭМ вызван. Пассажиры нервничают, но остаются на местах.
+        safety_delta: 15
+        procedure_delta: 15
+        service_delta: 5
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        system_narrative: Стюард не знал как вызвать ПЭМ. Потерял 8 минут.
+        safety_delta: -10
+        procedure_delta: -10
+        service_delta: -5
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        system_narrative: Стюард попытался открыть межвагонную дверь на скорости 400 км/ч. Перепад давления ударил
+          в лицо, он упал.
+        safety_delta: -50
+        procedure_delta: -40
+        service_delta: -20
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 4
+    deadline_minutes: 10
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+  initial_speech: Произошла нештатная ситуация. Оцените обстановку.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 11(1)
+  url: https://publication.pravo.gov.ru/Document/View/0001202503140005
+  application: Пассажир выполняет указания персонала по безопасности оборудования ВСМ. Технический алгоритм — учебное
+    допущение.

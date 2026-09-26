@@ -91,7 +91,7 @@ describe("boarding scenario", () => {
     ])
       state = applyAction(state, action(id));
     expect(state.outcome).toBe("resolved");
-    expect(state.scores.service).toBe(80);
+    expect(state.scores.procedure).toBe(80);
   });
 
   it("rejects unknown actions and scores wrong order", () => {
@@ -102,5 +102,14 @@ describe("boarding scenario", () => {
     expect(applyAction(state, action("explain_rules")).scores.procedure).toBe(
       80,
     );
+  });
+
+  it("does not resolve a shortcut that skips required verification", () => {
+    let state = createSession(input);
+    state = applyAction(state, action("explain_rules"));
+    state = applyAction(state, action("offer_help"));
+    state = applyAction(state, action("close_conversation"));
+    expect(state.outcome).toBe("active");
+    expect(state.incidents[0]?.phase).toBe(2);
   });
 });

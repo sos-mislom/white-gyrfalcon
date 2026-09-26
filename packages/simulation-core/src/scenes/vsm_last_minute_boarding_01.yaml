@@ -1,0 +1,101 @@
+scenario_id: vsm_last_minute_boarding_01
+menu_label: Соседний вагон
+type: character
+title: Посадка за три минуты до отправления
+visual:
+  background: carriage
+location:
+  car_number: 4
+  class_type: standard
+  zone: Платформа, у соседнего вагона
+character:
+  portrait_key: artem
+  id: char_vsm_last_minute_boarding_01
+  name: Кирилл
+  role: Опаздывающий пассажир с билетом
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: male
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: До отправления три минуты; пассажир с билетом на вагон
+    4 стоит у двери вагона 3.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 91
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Менее чем за пять минут до отправления допускается посадка в любой вагон с последующим переходом
+    в свой.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: Мой вагон дальше. Можно сейчас войти здесь и пройти внутри?
+  context_description: До отправления три минуты; пассажир с билетом на вагон 4 стоит у двери вагона 3.
+  sop_reference: Приказ Минтранса № 352, п. 91
+  required_tools: []
+  branches:
+  - action_id: allow_safe_nearby_boarding
+    intent_label: Менее чем за пять минут до отправления допускается посадка в любой вагон с последующим переходом
+      в свой.
+    example_phrases:
+    - До отправления меньше пяти минут. Входите в этот вагон и переходите к своему месту внутри поезда.
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Кирилл принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Пассажир смотрит на часы и ждёт решения у открытой двери вагона.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Пассажир смотрит на часы и ждёт решения у открытой двери вагона.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: send_running_to_far_car
+    intent_label: Бегите к четвёртому вагону по платформе, здесь входить нельзя.
+    example_phrases:
+    - Бегите к четвёртому вагону по платформе, здесь входить нельзя.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Кирилл указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Пассажир смотрит на часы и ждёт решения у открытой двери вагона.
+    failure_vector: Кирилл так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Кирилл возражает против предложенного шага и просит проверить правило.
+    idle_vector: Пассажир смотрит на часы и ждёт решения у открытой двери вагона.
+    conversation_vector: Кирилл отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

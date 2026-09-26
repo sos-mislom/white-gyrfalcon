@@ -14,12 +14,15 @@ export abstract class SessionRepository {
     receipt?: FreeformActionResultDto,
   ): Promise<SessionStateDto>;
   abstract ready(): Promise<boolean>;
+  abstract claimProfileSession(deviceId: string, sessionId: string): Promise<void>;
+  abstract profileSessions(deviceId: string): Promise<SessionStateDto[]>;
 }
 
 // Local development and unit tests only. Production requires PostgreSQL explicitly.
 export class MemorySessionRepository extends SessionRepository {
   private readonly records = new Map<string, SessionStateDto>();
   private readonly receipts = new Map<string, FreeformActionResultDto>();
+  private readonly owners = new Map<string, string>();
   async getFreeform(key: string) {
     return structuredClone(this.receipts.get(key));
   }
@@ -28,6 +31,15 @@ export class MemorySessionRepository extends SessionRepository {
   }
   async ready(): Promise<boolean> {
     return true;
+  }
+  async claimProfileSession(deviceId: string, sessionId: string): Promise<void> {
+    const owner = this.owners.get(sessionId);
+    if (owner && owner !== deviceId) throw new Error("profile_owner_conflict");
+    this.owners.set(sessionId, deviceId);
+  }
+  async profileSessions(deviceId: string): Promise<SessionStateDto[]> {
+    return [...this.owners.entries()].filter(([, owner]) => owner === deviceId)
+      .flatMap(([id]) => this.records.get(id) ? [structuredClone(this.records.get(id)!)] : []);
   }
   async mutate(
     id: string,

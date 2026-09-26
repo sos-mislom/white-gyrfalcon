@@ -11,12 +11,16 @@
     }
   },
   "scripts": {
+    "prebuild": "node tools/compile-scenarios.mjs",
     "build": "tsc -p tsconfig.json",
+    "pretest": "node tools/compile-scenarios.mjs",
     "test": "vitest run",
+    "pretypecheck": "node tools/compile-scenarios.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vsm/api-contracts": "0.1.0"
+    "@vsm/api-contracts": "0.1.0",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "vitest": "5.0.2"

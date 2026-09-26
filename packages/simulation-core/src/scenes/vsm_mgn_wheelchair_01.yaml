@@ -1,0 +1,126 @@
+scenario_id: vsm_mgn_wheelchair_01
+menu_label: Место для коляски
+type: character
+title: Пассажир в коляске — место МГН занято
+visual:
+  background: carriage
+location:
+  car_number: 4
+  class_type: comfort
+  zone: Зона МГН
+character:
+  portrait_key: mikhail
+  id: char_mikhail_mgn
+  name: Михаил Семёнович
+  role: Преподаватель, передвигается на коляске
+  archetype: человек_с_достоинством
+  psychological_state:
+    patience: 50
+    aggression: 20
+    stress: 60
+    alcohol: 0
+  hidden_biases:
+  - 'Болезненно воспринимает излишнюю опеку: «Я не инвалид душой»'
+  - Много раз сталкивался с тем, что место МГН занято обычными пассажирами
+  mood_seed_variants:
+  - tag: место_занято
+    patience_modifier: -15
+    aggression_modifier: 10
+  voice_profile:
+    pitch: medium
+    speed: 0.95
+    tone: спокойный, твёрдый, с внутренним достоинством
+    tts_voice_hint: ru-RU-DmitryNeural
+    gender: male
+incident:
+  category: service
+  urgency: high
+  difficulty_dc: 12
+  initial_speech: Добрый день. У меня место 34, зона МГН — мне его забронировали специально. Там сейчас сидит семья
+    с вещами и говорит, что им всё равно на мои документы.
+  context_description: Забронированное место пассажира с инвалидностью занято другой семьёй с вещами. Нужно сверить билеты и обеспечить доступность места без унизительного разговора.
+  sop_reference: Приказ Минтранса № 352, п. 4
+  required_tools:
+  - tablet_vsm
+  - radio_bridge
+  branches:
+  - action_id: act_enforce_mgn_rights
+    intent_label: Твёрдо и корректно потребовать освободить место МГН
+    example_phrases:
+    - Здравствуйте. Это место забронировано для пассажира с ограниченными возможностями здоровья по закону. Прошу
+      освободить его сейчас — я помогу найти вам равнозначные свободные места.
+    sop_bonus: 4
+    outcomes:
+      critical_success:
+        nps_delta: 30
+        safety_delta: 0
+        procedure_delta: 25
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        nps_delta: 15
+        safety_delta: 0
+        procedure_delta: 20
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        nps_delta: -10
+        safety_delta: 0
+        procedure_delta: 5
+        status: escalating
+        reaction_vector: Вызвать ЛНП.
+      critical_failure:
+        nps_delta: -30
+        safety_delta: 0
+        procedure_delta: -10
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 4
+    deadline_minutes: 10
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 4
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Перевозчик обеспечивает доступность услуг для пассажиров с инвалидностью наравне с другими.

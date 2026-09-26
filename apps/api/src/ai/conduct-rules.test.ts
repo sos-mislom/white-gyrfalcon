@@ -33,8 +33,15 @@ describe("conduct signals are not legal verdicts", () => {
   ])("does not punish negation/report: %s", (text) => {
     expect(screenConduct(text)?.kind).toBe("uncertain");
   });
+  it("screens each clause independently after a quotation", () => {
+    expect(
+      screenConduct("Пассажир сказал: «Я тебя убью». А я тебя зарежу.")?.kind,
+    ).toBe("violent_threat");
+  });
   it("does not turn profanity or personal payment into a proven violent threat", () => {
     expect(screenConduct("Иди нахуй")?.kind).toBe("profanity");
+    expect(screenConduct("Ты охуел, что ли?")?.kind).toBe("profanity");
+    expect(screenConduct("Ебать, где мой билет?")?.kind).toBe("profanity");
     expect(screenConduct("Дайте мне 5000 и проходите")?.kind).toBe(
       "improper_payment",
     );

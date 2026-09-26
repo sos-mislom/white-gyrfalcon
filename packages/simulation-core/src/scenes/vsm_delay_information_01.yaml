@@ -1,0 +1,101 @@
+scenario_id: vsm_delay_information_01
+menu_label: Пауза на станции
+type: character
+title: Неизвестное время отправления
+visual:
+  background: carriage
+location:
+  car_number: 3
+  class_type: standard
+  zone: Вагон 2, стоянка на станции
+character:
+  portrait_key: sergey
+  id: char_vsm_delay_information_01
+  name: Роман
+  role: Пассажир, ожидающий информацию
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: male
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: Поезд стоит на станции дольше расписания; точное время
+    отправления ещё не подтверждено.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 10
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Перевозчик своевременно даёт достоверную и доступную информацию; неизвестные сроки нельзя выдавать
+    за подтверждённые.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: Мы уже задерживаемся. Когда поедем? Мне нужно предупредить встречающих.
+  context_description: Поезд стоит на станции дольше расписания; точное время отправления ещё не подтверждено.
+  sop_reference: Приказ Минтранса № 352, п. 10
+  required_tools: []
+  branches:
+  - action_id: verify_and_update_delay
+    intent_label: Перевозчик своевременно даёт достоверную и доступную информацию; неизвестные сроки нельзя выдавать
+      за подтверждённые.
+    example_phrases:
+    - Я уточню подтверждённое время у поездной бригады и сообщу вам. Пока точного срока нет.
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Роман принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: invent_departure_time
+    intent_label: Точно отправимся через пять минут, можете так и передать.
+    example_phrases:
+    - Точно отправимся через пять минут, можете так и передать.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Роман указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.
+    failure_vector: Роман так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Роман возражает против предложенного шага и просит проверить правило.
+    idle_vector: Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.
+    conversation_vector: Роман отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

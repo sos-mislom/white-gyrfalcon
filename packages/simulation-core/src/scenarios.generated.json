@@ -1,0 +1,3296 @@
+[
+  {
+    "scenario_id": "vsm_bag_in_aisle_01",
+    "menu_label": "Чемодан в проходе",
+    "type": "character",
+    "title": "Чемодан перекрыл проход",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 4,
+      "class_type": "standard",
+      "zone": "Центр вагона, ряд 8"
+    },
+    "character": {
+      "portrait_key": "igor",
+      "id": "char_vsm_bag_in_aisle_01",
+      "name": "Виктор",
+      "role": "Пассажир с крупным чемоданом",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "male",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: Чемодан стоит в проходе, другие пассажиры не могут свободно пройти."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "пп. 172–174",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Ручную кладь размещают в предназначенных местах; проход и коридор не используют для хранения."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "Полка занята. Я поставил чемодан здесь ненадолго. Он же никому не мешает?",
+      "context_description": "Чемодан стоит в проходе, другие пассажиры не могут свободно пройти.",
+      "sop_reference": "Приказ Минтранса № 352, пп. 172–174",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "clear_aisle_and_store",
+          "intent_label": "Ручную кладь размещают в предназначенных местах; проход и коридор не используют для хранения.",
+          "example_phrases": [
+            "Проход должен оставаться свободным. Давайте найдём подходящее место для чемодана."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Виктор принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Виктор принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "allow_aisle_storage",
+          "intent_label": "Пусть чемодан стоит в проходе до конца поездки.",
+          "example_phrases": [
+            "Пусть чемодан стоит в проходе до конца поездки."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Виктор указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Виктор указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Виктор указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Виктор указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.",
+        "failure_vector": "Виктор так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Виктор возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Пассажиры обходят чемодан боком; проход нужно освободить до следующей остановки.",
+        "conversation_vector": "Виктор отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_biz_noisy_kids_01",
+    "menu_label": "Ребёнок в бизнес-классе",
+    "type": "character",
+    "title": "Плачущий ребёнок в бизнес-классе",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 2,
+      "class_type": "business",
+      "zone": "Ряды 5–7, центр вагона"
+    },
+    "character": {
+      "portrait_key": "tamara",
+      "id": "char_tamara_noisy_kids",
+      "name": "Тамара Павловна",
+      "role": "Пожилая пассажирка, едет к семье",
+      "archetype": "усталая_пассажирка",
+      "psychological_state": {
+        "patience": 25,
+        "aggression": 45,
+        "stress": 75,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Боится, что ей снова не удастся отдохнуть в дороге",
+        "Не хочет ругаться с матерью напрямую"
+      ],
+      "mood_seed_variants": [
+        {
+          "tag": "не_спала_ночь",
+          "patience_modifier": -20,
+          "aggression_modifier": 15
+        }
+      ],
+      "voice_profile": {
+        "pitch": "medium",
+        "speed": 1,
+        "tone": "едкий, сдержанный, с усталостью",
+        "tts_voice_hint": "ru-RU-SvetlanaNeural",
+        "gender": "female"
+      },
+      "dialogue_vector": "Просит помочь сохранить спокойствие, не требует высадить ребёнка."
+    },
+    "interactions": {
+      "actors": [
+        {
+          "portrait_key": "maria_child",
+          "id": "char_mother_with_child",
+          "name": "Мария",
+          "role": "Мать плачущего ребёнка",
+          "archetype": "измотанная_мать",
+          "psychological_state": {
+            "patience": 35,
+            "aggression": 10,
+            "stress": 80,
+            "alcohol": 0
+          },
+          "hidden_biases": [
+            "Боится, что окружающие обвинят её в плаче ребёнка"
+          ],
+          "voice_profile": {
+            "gender": "female",
+            "tone": "устало, сдержанно"
+          },
+          "dialogue_vector": "Хочет успокоить ребёнка и согласна принять посильную помощь, но не может мгновенно прекратить плач.",
+          "initial_speech": "Извините, он плачет уже долго. Я пробовала его успокоить. Подскажите, куда нам можно ненадолго пройти?",
+          "zone": "Ряд 6, место матери",
+          "callout_after_minutes": 0
+        }
+      ]
+    },
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 13,
+      "initial_speech": "Простите, ребёнок плачет уже двадцать минут. Я понимаю, что ему трудно, но и мне тяжело. Можно как-то помочь нам обеим?",
+      "context_description": "Мама с ребёнком 2 лет — ребёнок плачет. Другая пассажирка обращается к стюарду. Не настраивать пассажиров друг против друга.",
+      "sop_reference": "Приказ Минтранса № 352, п. 2",
+      "required_tools": [
+        "service_kit"
+      ],
+      "branches": [
+        {
+          "action_id": "act_mediate_quietly",
+          "intent_label": "Деликатно поговорить с обеими пассажирками и найти доступный способ помочь",
+          "example_phrases": [
+            "Я вас понимаю. Сначала уточню, чем помочь маме с ребёнком, затем предложу вам доступный вариант, чтобы было спокойнее. Если есть свободное тихое место, я проверю его."
+          ],
+          "sop_bonus": 4,
+          "outcomes": {
+            "critical_success": {
+              "nps_delta": 25,
+              "safety_delta": 0,
+              "procedure_delta": 20,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "nps_delta": 10,
+              "safety_delta": 0,
+              "procedure_delta": 15,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "nps_delta": -10,
+              "safety_delta": 0,
+              "procedure_delta": 5,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "nps_delta": -35,
+              "safety_delta": -5,
+              "procedure_delta": -10,
+              "status": "failed",
+              "reaction_vector": "Межпассажирский конфликт — вмешательство ЛНП."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": [
+            "talk:char_tamara_noisy_kids",
+            "talk:char_mother_with_child"
+          ]
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 6,
+        "deadline_minutes": 14,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      }
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 2",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Равный доступ к поездке есть и у семьи с ребёнком; помощь соседям не означает право требовать высадки ребёнка."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_boarding_no_ticket_01",
+    "featured": true,
+    "menu_label": "Посадка без билета",
+    "type": "character",
+    "title": "Сбой приложения на посадке — деньги списались, билета нет",
+    "visual": {
+      "background": "departure"
+    },
+    "location": {
+      "car_number": 5,
+      "class_type": "standard",
+      "zone": "Тамбур, вход в вагон"
+    },
+    "character": {
+      "id": "char_sergei_IT",
+      "portrait_key": "sergey",
+      "name": "Сергей Андреевич",
+      "role": "Менеджер по продажам, командировка в СПб",
+      "archetype": "спешащий_деловой",
+      "psychological_state": {
+        "patience": 35,
+        "aggression": 55,
+        "stress": 80,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Убежден, что «технологии виноваты, не он» — любой сбой системы считает проблемой перевозчика",
+        "Легкий снобизм к молодым проводницам: ожидает, что они не разберутся с техническими деталями"
+      ],
+      "mood_seed_variants": [
+        {
+          "tag": "опаздывает_на_совещание",
+          "patience_modifier": -15,
+          "aggression_modifier": 20
+        },
+        {
+          "tag": "нейтральный_день",
+          "patience_modifier": 0,
+          "aggression_modifier": 0
+        }
+      ],
+      "voice_profile": {
+        "pitch": "medium_low",
+        "speed": 1.2,
+        "tone": "напряженный, отрывистый, нетерпеливый",
+        "tts_voice_hint": "ru-RU-DmitryNeural",
+        "gender": "male"
+      }
+    },
+    "incident": {
+      "category": "rule_check",
+      "urgency": "high",
+      "difficulty_dc": 13,
+      "initial_speech": "Подождите, у меня всё оплачено! Вот — скриншот списания с карты, 4 200 рублей. Ваше приложение просто глючит! Поезд через 3 минуты уходит!",
+      "context_description": "Пассажир предъявляет скриншот банковской операции. В системе «Экспресс» билет не числится. Поезд отправляется через 3 минуты. По Приказу Минтранса № 352 п. 18 — без действительного проездного документа посадка запрещена.",
+      "sop_reference": "Приказ Минтранса № 352, п. 79",
+      "required_tools": [
+        "tablet_vsm"
+      ],
+      "branches": [
+        {
+          "action_id": "ask_for_ticket",
+          "intent_label": "Проверить билет и данные покупки",
+          "example_phrases": [
+            "Покажите, пожалуйста, ваш билет"
+          ],
+          "sop_bonus": 0,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем шаге.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            },
+            "success": {
+              "reaction_vector": "Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем шаге.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            },
+            "failure": {
+              "reaction_vector": "Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем шаге.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            },
+            "critical_failure": {
+              "reaction_vector": "Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем шаге.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            }
+          },
+          "match_patterns": [
+            "^(?:пожалуйста )?(?:покажите|предъявите) (?:пожалуйста )?(?:ваш )?(?:билет|билет и документ|билет и паспорт)(?: пожалуйста)?$"
+          ]
+        },
+        {
+          "action_id": "explain_rules",
+          "intent_label": "Объяснить, почему списание не заменяет билет",
+          "example_phrases": [
+            "Без билета посадка невозможна, пожалуйста, обратитесь в кассу"
+          ],
+          "sop_bonus": 0,
+          "duration_minutes": 1,
+          "requires": [
+            "ask_for_ticket"
+          ],
+          "missing_requirement": {
+            "reaction_vector": "Правило сообщено до проверки обстоятельств; пассажир чувствует формальный отказ и просит разобраться.",
+            "status": "escalating",
+            "procedure_delta": -20
+          },
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            },
+            "success": {
+              "reaction_vector": "Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            },
+            "failure": {
+              "reaction_vector": "Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            },
+            "critical_failure": {
+              "reaction_vector": "Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.",
+              "status": "in_progress",
+              "procedure_delta": 0
+            }
+          },
+          "match_patterns": [
+            "^(?:я )?(?:не могу вас посадить|не разрешаю посадку|не пущу(?: вас)?|нельзя пройти|посадка запрещена) без (?:действительного )?билета(?: (?:пройдите|обратитесь) в кассу(?: №?\\d{1,3})?)?$"
+          ]
+        },
+        {
+          "action_id": "offer_help",
+          "intent_label": "Назвать конкретный маршрут помощи",
+          "example_phrases": [
+            "Обратитесь в кассу №3 или официальный контактный центр"
+          ],
+          "sop_bonus": 2,
+          "duration_minutes": 1,
+          "requires": [
+            "explain_rules"
+          ],
+          "missing_requirement": {
+            "reaction_vector": "Направление названо без объяснения ограничения; пассажир сомневается и просит разъяснить.",
+            "status": "escalating",
+            "procedure_delta": -10
+          },
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Искренне благодарен; направляется за помощью, билета пока нет.",
+              "status": "in_progress",
+              "nps_delta": 30
+            },
+            "success": {
+              "reaction_vector": "Принимает маршрут помощи, всё ещё торопится; билета пока нет.",
+              "status": "in_progress",
+              "nps_delta": 10
+            },
+            "failure": {
+              "reaction_vector": "Сомневается, что успеет; просит ответственного сотрудника, напряжение растёт.",
+              "status": "escalating",
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущён, грозит жалобой, но просит точный адрес помощи.",
+              "status": "escalating",
+              "nps_delta": -40
+            }
+          },
+          "match_patterns": [
+            "^(?:пожалуйста )?(?:обратитесь|пройдите|подойдите) в (?:кассу(?: №?\\d{1,3})?|(?:официальный )?контактный центр)(?: там помогут)?(?: пожалуйста)?$"
+          ]
+        },
+        {
+          "action_id": "close_conversation",
+          "intent_label": "Подтвердить понимание и завершить разговор",
+          "example_phrases": [
+            "Всего доброго, вам всё понятно?"
+          ],
+          "sop_bonus": 0,
+          "duration_minutes": 0.5,
+          "requires": [
+            "explain_rules",
+            "offer_help"
+          ],
+          "missing_requirement": {
+            "reaction_vector": "Разговор пытаются завершить без понятного маршрута помощи; пассажир задаёт вопрос снова.",
+            "status": "escalating",
+            "procedure_delta": -20
+          },
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Знает следующий шаг и прощается, сохраняя текущую эмоцию.",
+              "status": "resolved"
+            },
+            "success": {
+              "reaction_vector": "Знает следующий шаг и прощается, сохраняя текущую эмоцию.",
+              "status": "resolved"
+            },
+            "failure": {
+              "reaction_vector": "Знает следующий шаг и прощается, сохраняя текущую эмоцию.",
+              "status": "resolved"
+            },
+            "critical_failure": {
+              "reaction_vector": "Знает следующий шаг и прощается, сохраняя текущую эмоцию.",
+              "status": "resolved"
+            }
+          },
+          "match_patterns": [
+            "^(?:(?:всего доброго|до свидания|счастливого пути|спасибо|вам все понятно) ?)+$"
+          ]
+        },
+        {
+          "action_id": "allow_boarding",
+          "intent_label": "Разрешить посадку без действительного билета",
+          "example_phrases": [
+            "Ладно, проходите так"
+          ],
+          "match_patterns": [
+            "^(?:ладно )?(?:проходите|садитесь|пущу вас|можете пройти)(?: так| без билета)?(?: только быстрее)?$"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "is_violation": true,
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.",
+              "status": "failed",
+              "procedure_delta": -70,
+              "safety_delta": -70,
+              "nps_delta": 30
+            },
+            "success": {
+              "reaction_vector": "Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.",
+              "status": "failed",
+              "procedure_delta": -70,
+              "safety_delta": -70,
+              "nps_delta": 30
+            },
+            "failure": {
+              "reaction_vector": "Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.",
+              "status": "failed",
+              "procedure_delta": -70,
+              "safety_delta": -70,
+              "nps_delta": 30
+            },
+            "critical_failure": {
+              "reaction_vector": "Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.",
+              "status": "failed",
+              "procedure_delta": -70,
+              "safety_delta": -70,
+              "nps_delta": 30
+            }
+          }
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Отказать грубо без помощи",
+          "example_phrases": [
+            "Это не мои проблемы, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущён грубостью проводника; просит объяснить, куда ему обратиться.",
+              "status": "escalating",
+              "service_delta": -50,
+              "nps_delta": -40
+            },
+            "success": {
+              "reaction_vector": "Возмущён грубостью проводника; просит объяснить, куда ему обратиться.",
+              "status": "escalating",
+              "service_delta": -50,
+              "nps_delta": -40
+            },
+            "failure": {
+              "reaction_vector": "Возмущён грубостью проводника; просит объяснить, куда ему обратиться.",
+              "status": "escalating",
+              "service_delta": -50,
+              "nps_delta": -40
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущён грубостью проводника; просит объяснить, куда ему обратиться.",
+              "status": "escalating",
+              "service_delta": -50,
+              "nps_delta": -40
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 4,
+        "deadline_minutes": 10,
+        "warning_vector": "Время идёт; поезд требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      }
+    },
+    "aliases": [
+      "boarding_no_ticket"
+    ],
+    "grounding": {
+      "forbidden_reply_patterns": [
+        "полици|арест|задержан"
+      ],
+      "forbidden_reply_patterns_by_action": {
+        "offer_help": [
+          "(?:поехал|ушел|ушёл|направился|добрался|уже\\s+в\\s+кассе)"
+        ],
+        "allow_boarding": [
+          "(?:посадка\\s+запрещена|не\\s+пустите|не\\s+могу\\s+сесть|нечего\\s+делать|не\\s+допускается|нельзя|но\\s+без\\s+билета)"
+        ]
+      },
+      "required_terms_by_action": {
+        "ask_for_ticket": "билет|заказ|почт|оплат|прилож|паспорт|списан|штрихкод"
+      }
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 79",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "При посадке предъявляют билет и документ, по которому он оформлен."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_cat_without_carrier_01",
+    "menu_label": "Кошка без переноски",
+    "type": "character",
+    "title": "Кошка выбралась из переноски",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 2,
+      "class_type": "standard",
+      "zone": "Ряд 5, у окна"
+    },
+    "character": {
+      "portrait_key": "elena",
+      "id": "char_vsm_cat_without_carrier_01",
+      "name": "Наталья",
+      "role": "Пассажирка с кошкой",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "female",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: Кошка вышла из переноски на сиденье, соседний пассажир опасается за неё и свои вещи."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "пп. 194, 197, 199",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Кошку перевозят в контейнере на месте для ручной клади; владелец соблюдает санитарный режим."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "Она спокойная, я просто выпустила её размяться. Можно оставить так?",
+      "context_description": "Кошка вышла из переноски на сиденье, соседний пассажир опасается за неё и свои вещи.",
+      "sop_reference": "Приказ Минтранса № 352, пп. 194, 197, 199",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "return_cat_to_carrier",
+          "intent_label": "Кошку перевозят в контейнере на месте для ручной клади; владелец соблюдает санитарный режим.",
+          "example_phrases": [
+            "Пожалуйста, поместите кошку в переноску. Я помогу найти удобное место для неё."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Наталья принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Наталья принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "permit_loose_cat",
+          "intent_label": "Пусть кошка свободно ходит по вагону, раз она спокойная.",
+          "example_phrases": [
+            "Пусть кошка свободно ходит по вагону, раз она спокойная."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Наталья указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Наталья указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Наталья указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Наталья указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.",
+        "failure_vector": "Наталья так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Наталья возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.",
+        "conversation_vector": "Наталья отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_delay_information_01",
+    "menu_label": "Пауза на станции",
+    "type": "character",
+    "title": "Неизвестное время отправления",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 3,
+      "class_type": "standard",
+      "zone": "Вагон 2, стоянка на станции"
+    },
+    "character": {
+      "portrait_key": "sergey",
+      "id": "char_vsm_delay_information_01",
+      "name": "Роман",
+      "role": "Пассажир, ожидающий информацию",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "male",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: Поезд стоит на станции дольше расписания; точное время отправления ещё не подтверждено."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 10",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Перевозчик своевременно даёт достоверную и доступную информацию; неизвестные сроки нельзя выдавать за подтверждённые."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "Мы уже задерживаемся. Когда поедем? Мне нужно предупредить встречающих.",
+      "context_description": "Поезд стоит на станции дольше расписания; точное время отправления ещё не подтверждено.",
+      "sop_reference": "Приказ Минтранса № 352, п. 10",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "verify_and_update_delay",
+          "intent_label": "Перевозчик своевременно даёт достоверную и доступную информацию; неизвестные сроки нельзя выдавать за подтверждённые.",
+          "example_phrases": [
+            "Я уточню подтверждённое время у поездной бригады и сообщу вам. Пока точного срока нет."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Роман принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Роман принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "invent_departure_time",
+          "intent_label": "Точно отправимся через пять минут, можете так и передать.",
+          "example_phrases": [
+            "Точно отправимся через пять минут, можете так и передать."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Роман указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Роман указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Роман указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Роман указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.",
+        "failure_vector": "Роман так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Роман возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Стоянка продолжается, пассажир ждёт честного обновления, чтобы связаться со встречающими.",
+        "conversation_vector": "Роман отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_env_blackout_01",
+    "menu_label": "Поезд без света",
+    "type": "environmental_emergency",
+    "title": "Полное обесточивание — ураган свалил опору",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 0,
+      "class_type": "all_cars",
+      "zone": "Весь состав, перегон Бологое — Новгород"
+    },
+    "character": null,
+    "incident": {
+      "category": "critical_emergency",
+      "urgency": "critical",
+      "difficulty_dc": 14,
+      "trigger_event": "Ураганный ветер повалил опору контактной сети. Тяга пропала. Весь основной свет погас. Кондиционеры выключились. Аварийное аккумуляторное освещение горит. В герметичном вагоне нарастает духота.",
+      "sop_reference": "Приказ Минтранса № 352, п. 10",
+      "required_tools": [
+        "radio_bridge",
+        "flashlight"
+      ],
+      "branches": [
+        {
+          "action_id": "act_announce_ventilation_info",
+          "intent_label": "PA объявление + инфо о вентиляции и времени ожидания",
+          "example_phrases": [
+            "Уважаемые пассажиры, произошло временное отключение внешнего питания. Аварийная вентиляция работает, воздух есть. Расчётное время восстановления — до 40 минут. Оставайтесь на местах, пейте воду — она в кармашках кресел."
+          ],
+          "sop_bonus": 4,
+          "outcomes": {
+            "critical_success": {
+              "system_narrative": "Пассажиры успокоились. Через 32 минуты питание восстановлено.",
+              "safety_delta": 25,
+              "procedure_delta": 25,
+              "service_delta": 20,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "system_narrative": "Часть пассажиров нервничает, но слушается.",
+              "safety_delta": 15,
+              "procedure_delta": 15,
+              "service_delta": 10,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "system_narrative": "Паника нарастает. Пассажиры толпятся у дверей.",
+              "safety_delta": -10,
+              "procedure_delta": 0,
+              "service_delta": -15,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "system_narrative": "Стюард не объявил. Пассажир с клаустрофобией начал ломать дверь.",
+              "safety_delta": -30,
+              "procedure_delta": -25,
+              "service_delta": -30,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 4,
+        "deadline_minutes": 10,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      },
+      "initial_speech": "Произошла нештатная ситуация. Оцените обстановку."
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 10",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Пассажирам сообщают достоверную доступную информацию. Конкретная схема резервного питания — учебное допущение."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_env_depressurization_01",
+    "menu_label": "Шлюз открыт",
+    "type": "environmental_emergency",
+    "title": "Разгерметизация межвагонного шлюза",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 3,
+      "class_type": "bistro",
+      "zone": "Межвагонный переход 3→4"
+    },
+    "character": null,
+    "incident": {
+      "category": "technical_failure",
+      "urgency": "high",
+      "difficulty_dc": 13,
+      "trigger_event": "Резкий перепад давления — у пассажиров закладывает уши. Из межвагонного перехода слышен свистящий звук. Несколько пассажиров жалуются на боль в ушах и головокружение.",
+      "sop_reference": "Приказ Минтранса № 352, п. 11(1)",
+      "required_tools": [
+        "radio_bridge",
+        "triangle_key"
+      ],
+      "branches": [
+        {
+          "action_id": "act_seal_and_report",
+          "intent_label": "Задраить переход + доложить ПЭМ + объяснить пассажирам",
+          "example_phrases": [
+            "(По рации ПЭМ: «Вагон 3-4, свистящий звук из перехода, давление снижено, пассажиры жалуются на уши, прошу вашей помощи.»). (Пассажирам:) Небольшой технический момент — механики уже реагируют. Закройте рот и зевните — это поможет с ушами."
+          ],
+          "sop_bonus": 3,
+          "outcomes": {
+            "critical_success": {
+              "system_narrative": "ПЭМ прибыл за 4 минуты, устранил негерметичность уплотнителя.",
+              "safety_delta": 20,
+              "procedure_delta": 20,
+              "service_delta": 15,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "system_narrative": "ПЭМ вызван. Пассажиры нервничают, но остаются на местах.",
+              "safety_delta": 15,
+              "procedure_delta": 15,
+              "service_delta": 5,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "system_narrative": "Стюард не знал как вызвать ПЭМ. Потерял 8 минут.",
+              "safety_delta": -10,
+              "procedure_delta": -10,
+              "service_delta": -5,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "system_narrative": "Стюард попытался открыть межвагонную дверь на скорости 400 км/ч. Перепад давления ударил в лицо, он упал.",
+              "safety_delta": -50,
+              "procedure_delta": -40,
+              "service_delta": -20,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 4,
+        "deadline_minutes": 10,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      },
+      "initial_speech": "Произошла нештатная ситуация. Оцените обстановку."
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 11(1)",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202503140005",
+        "application": "Пассажир выполняет указания персонала по безопасности оборудования ВСМ. Технический алгоритм — учебное допущение."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_env_emergency_brake_01",
+    "menu_label": "Резкое торможение",
+    "type": "environmental_emergency",
+    "title": "Экстренное торможение с 400 км/ч",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 0,
+      "class_type": "all_cars",
+      "zone": "Весь состав, перегон Тверь — Валдай"
+    },
+    "character": null,
+    "incident": {
+      "category": "critical_emergency",
+      "urgency": "critical",
+      "difficulty_dc": 15,
+      "trigger_event": "Резкий удар и мощное замедление — автоматика обнаружила дерево на путях. С полок летят чемоданы. Поезд встал в лесу. Аварийное освещение включено. По соседнему пути через 8 минут пройдёт встречный экспресс.",
+      "sop_reference": "Приказ Минтранса № 352, п. 11(1)",
+      "required_tools": [
+        "radio_bridge",
+        "flashlight",
+        "medical_kit_basic"
+      ],
+      "branches": [
+        {
+          "action_id": "act_pa_lockdown_and_report",
+          "intent_label": "PA оповещение + блокировка дверей + доклад ЛНП",
+          "example_phrases": [
+            "Уважаемые пассажиры, сохраняйте спокойствие и оставайтесь на своих местах! Не подходите к дверям — контактный рельс и соседний путь под напряжением. Пострадавшие — поднимите руку, я иду к вам."
+          ],
+          "sop_bonus": 5,
+          "outcomes": {
+            "critical_success": {
+              "system_narrative": "Объявление чёткое. Паника спала за 20 сек. Двое ушибленных получили помощь. Доклад ЛНП: состав целый, тяжёлых нет.",
+              "safety_delta": 35,
+              "procedure_delta": 30,
+              "service_delta": 15,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "system_narrative": "Объявление сделано. Группа пассажиров у тамбура — стюард удержал. ЛНП информирован.",
+              "safety_delta": 20,
+              "procedure_delta": 20,
+              "service_delta": 5,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "system_narrative": "Объявление нечёткое, голос дрожал. 5 пассажиров ринулись к двери. Один нажал кнопку аварийного открытия.",
+              "safety_delta": -25,
+              "procedure_delta": 0,
+              "service_delta": -15,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "system_narrative": "Стюард растерялся и побежал в соседний вагон. В салоне паника. Пассажир открыл дверь и выпрыгнул на насыпь под контактный рельс.",
+              "safety_delta": -100,
+              "procedure_delta": -50,
+              "service_delta": -50,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "act_open_door_for_air",
+          "intent_label": "ГРУБАЯ ОШИБКА: Открыть дверь чтобы «подышали»",
+          "example_phrases": [
+            "Сейчас откроем дверь, подышите, не волнуйтесь."
+          ],
+          "sop_bonus": -15,
+          "outcomes": {
+            "critical_success": null,
+            "success": null,
+            "failure": {
+              "system_narrative": "ЛНП по рации: «Немедленно заблокируйте дверь! По соседнему пути через 6 минут экспресс 400 км/ч!»",
+              "safety_delta": -60,
+              "procedure_delta": -40,
+              "service_delta": -20,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "system_narrative": "Пассажиры выходят на насыпь. Воздушный удар от встречного поезда.",
+              "safety_delta": -100,
+              "procedure_delta": -100,
+              "service_delta": -100,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 4,
+        "deadline_minutes": 10,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      },
+      "initial_speech": "Произошла нештатная ситуация. Оцените обстановку."
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 11(1)",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202503140005",
+        "application": "Пассажир выполняет указания персонала по безопасности движения ВСМ. Порядок работы с тормозом — учебное допущение."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_env_fire_suppression_01",
+    "menu_label": "Тревога в электрощитовой",
+    "type": "environmental_emergency",
+    "title": "Сработка СПТ в электрощитовой",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 2,
+      "class_type": "business",
+      "zone": "Торец вагона, щитовой отсек"
+    },
+    "character": null,
+    "incident": {
+      "category": "critical_emergency",
+      "urgency": "critical",
+      "difficulty_dc": 16,
+      "trigger_event": "Короткое замыкание — сработала СПТ. Из щитового отсека видна струйка белого дыма. Оглушительная сирена. Запах горелой изоляции.",
+      "sop_reference": "Приказ Минтранса № 352, п. 11(1)",
+      "required_tools": [
+        "radio_bridge",
+        "fire_extinguisher_ou5",
+        "triangle_key",
+        "flashlight"
+      ],
+      "branches": [
+        {
+          "action_id": "act_full_fire_protocol",
+          "intent_label": "PA + связь с машинистом + огнетушитель наготове",
+          "example_phrases": [
+            "Внимание, пассажиры! Сохраняйте спокойствие, остайтесь на местах! (По рации машинисту: «Вагон 2, сработка СПТ в щитовом отсеке, визуально — дым из-под двери, запах горелой изоляции, принимаю меры, жду команду.»)"
+          ],
+          "sop_bonus": 6,
+          "outcomes": {
+            "critical_success": {
+              "system_narrative": "Машинист снижает скорость. СПТ погасила очаг штатно. Через 18 минут состав добрался до Бологое.",
+              "safety_delta": 40,
+              "procedure_delta": 35,
+              "service_delta": 10,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "system_narrative": "Протокол выполнен. Небольшая задержка — рацию нашёл через 90 секунд вместо 30.",
+              "safety_delta": 25,
+              "procedure_delta": 20,
+              "service_delta": 5,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "system_narrative": "Стюард побежал смотреть, не вызвав машиниста. Открыл дверь щитового — дым усилился.",
+              "safety_delta": -20,
+              "procedure_delta": -20,
+              "service_delta": -10,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "system_narrative": "Стюард попытался тушить огнетушителем через открытую дверь без доклада. Кислород попал в отсек — пламя усилилось.",
+              "safety_delta": -80,
+              "procedure_delta": -60,
+              "service_delta": -30,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 4,
+        "deadline_minutes": 10,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      },
+      "initial_speech": "Произошла нештатная ситуация. Оцените обстановку."
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 11(1)",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202503140005",
+        "application": "Пассажир выполняет указания персонала по безопасности оборудования ВСМ. Пожарный алгоритм — учебное допущение."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_env_pantograph_ice_01",
+    "menu_label": "Искры за окном",
+    "type": "environmental_emergency",
+    "title": "Обледенение пантографа — искрение за окном",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 0,
+      "class_type": "all_cars",
+      "zone": "Весь состав, перегон Новгород — СПб, зима"
+    },
+    "character": null,
+    "incident": {
+      "category": "technical_failure",
+      "urgency": "medium",
+      "difficulty_dc": 11,
+      "trigger_event": "За окнами видны яркие голубые вспышки и хлопки — пантограф бьётся об обледеневший провод. Скорость плавно падает. Пассажиры испуганы вспышками.",
+      "sop_reference": "Приказ Минтранса № 352, п. 11(1)",
+      "required_tools": [
+        "radio_bridge"
+      ],
+      "branches": [
+        {
+          "action_id": "act_reassure_simple",
+          "intent_label": "Спокойно объяснить вспышки простым языком",
+          "example_phrases": [
+            "Уважаемые пассажиры, вспышки за окном — это нормальное явление зимой: поезд работает от электросети как трамвай, и при морозе бывает лёгкое искрение. Это не опасно. Мы немного снижаем скорость до нормализации контакта — прибытие задержится на 12–15 минут."
+          ],
+          "sop_bonus": 3,
+          "outcomes": {
+            "critical_success": {
+              "system_narrative": "Пассажиры кивают, достают телефоны фотографировать вспышки.",
+              "safety_delta": 10,
+              "procedure_delta": 15,
+              "service_delta": 20,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "system_narrative": "Большинство успокоилось. Несколько переспрашивают.",
+              "safety_delta": 10,
+              "procedure_delta": 10,
+              "service_delta": 10,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "system_narrative": "Стюард сказал: «Технические проблемы». Пассажир уже пишет «поезд горит» в соцсетях.",
+              "safety_delta": 0,
+              "procedure_delta": 0,
+              "service_delta": -15,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "system_narrative": "Стюард не стал ничего объяснять. Паника распространилась.",
+              "safety_delta": 0,
+              "procedure_delta": -10,
+              "service_delta": -25,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 6,
+        "deadline_minutes": 14,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      },
+      "initial_speech": "Произошла нештатная ситуация. Оцените обстановку."
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 11(1)",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202503140005",
+        "application": "Пассажир выполняет указания персонала по безопасности оборудования ВСМ. Действия с токоприёмником — учебное допущение."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_guide_dog_01",
+    "menu_label": "Собака-проводник",
+    "type": "character",
+    "title": "Пассажир с собакой-проводником",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 3,
+      "class_type": "standard",
+      "zone": "Посадка, вагон 1"
+    },
+    "character": {
+      "portrait_key": "mikhail",
+      "id": "char_vsm_guide_dog_01",
+      "name": "Денис",
+      "role": "Незрячий пассажир с собакой-проводником",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "male",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: Пассажир показывает документ об обучении собаки-проводника; собака в ошейнике и наморднике у его ног."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 204",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Собака-проводник с подтверждением обучения перевозится в вагоне любого типа без платы и перевозочного документа."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "Это моя собака-проводник. Документ при мне. Подскажите, как нам пройти к месту?",
+      "context_description": "Пассажир показывает документ об обучении собаки-проводника; собака в ошейнике и наморднике у его ног.",
+      "sop_reference": "Приказ Минтранса № 352, п. 204",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "assist_guide_dog_boarding",
+          "intent_label": "Собака-проводник с подтверждением обучения перевозится в вагоне любого типа без платы и перевозочного документа.",
+          "example_phrases": [
+            "Документ вижу. Собака-проводник едет с вами без отдельной платы; помогу пройти к месту."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Денис принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Денис принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "deny_guide_dog",
+          "intent_label": "С собакой в этот вагон нельзя, оставьте её на станции.",
+          "example_phrases": [
+            "С собакой в этот вагон нельзя, оставьте её на станции."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Денис указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Денис указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Денис указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Денис указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.",
+        "failure_vector": "Денис так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Денис возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.",
+        "conversation_vector": "Денис отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_last_minute_boarding_01",
+    "menu_label": "Соседний вагон",
+    "type": "character",
+    "title": "Посадка за три минуты до отправления",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 4,
+      "class_type": "standard",
+      "zone": "Платформа, у соседнего вагона"
+    },
+    "character": {
+      "portrait_key": "artem",
+      "id": "char_vsm_last_minute_boarding_01",
+      "name": "Кирилл",
+      "role": "Опаздывающий пассажир с билетом",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "male",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: До отправления три минуты; пассажир с билетом на вагон 4 стоит у двери вагона 3."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 91",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Менее чем за пять минут до отправления допускается посадка в любой вагон с последующим переходом в свой."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "Мой вагон дальше. Можно сейчас войти здесь и пройти внутри?",
+      "context_description": "До отправления три минуты; пассажир с билетом на вагон 4 стоит у двери вагона 3.",
+      "sop_reference": "Приказ Минтранса № 352, п. 91",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "allow_safe_nearby_boarding",
+          "intent_label": "Менее чем за пять минут до отправления допускается посадка в любой вагон с последующим переходом в свой.",
+          "example_phrases": [
+            "До отправления меньше пяти минут. Входите в этот вагон и переходите к своему месту внутри поезда."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Кирилл принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Кирилл принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Пассажир смотрит на часы и ждёт решения у открытой двери вагона.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Пассажир смотрит на часы и ждёт решения у открытой двери вагона.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "send_running_to_far_car",
+          "intent_label": "Бегите к четвёртому вагону по платформе, здесь входить нельзя.",
+          "example_phrases": [
+            "Бегите к четвёртому вагону по платформе, здесь входить нельзя."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Кирилл указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Кирилл указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Кирилл указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Кирилл указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Пассажир смотрит на часы и ждёт решения у открытой двери вагона.",
+        "failure_vector": "Кирилл так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Кирилл возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Пассажир смотрит на часы и ждёт решения у открытой двери вагона.",
+        "conversation_vector": "Кирилл отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_mgn_wheelchair_01",
+    "menu_label": "Место для коляски",
+    "type": "character",
+    "title": "Пассажир в коляске — место МГН занято",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 4,
+      "class_type": "comfort",
+      "zone": "Зона МГН"
+    },
+    "character": {
+      "portrait_key": "mikhail",
+      "id": "char_mikhail_mgn",
+      "name": "Михаил Семёнович",
+      "role": "Преподаватель, передвигается на коляске",
+      "archetype": "человек_с_достоинством",
+      "psychological_state": {
+        "patience": 50,
+        "aggression": 20,
+        "stress": 60,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Болезненно воспринимает излишнюю опеку: «Я не инвалид душой»",
+        "Много раз сталкивался с тем, что место МГН занято обычными пассажирами"
+      ],
+      "mood_seed_variants": [
+        {
+          "tag": "место_занято",
+          "patience_modifier": -15,
+          "aggression_modifier": 10
+        }
+      ],
+      "voice_profile": {
+        "pitch": "medium",
+        "speed": 0.95,
+        "tone": "спокойный, твёрдый, с внутренним достоинством",
+        "tts_voice_hint": "ru-RU-DmitryNeural",
+        "gender": "male"
+      }
+    },
+    "incident": {
+      "category": "service",
+      "urgency": "high",
+      "difficulty_dc": 12,
+      "initial_speech": "Добрый день. У меня место 34, зона МГН — мне его забронировали специально. Там сейчас сидит семья с вещами и говорит, что им всё равно на мои документы.",
+      "context_description": "Забронированное место пассажира с инвалидностью занято другой семьёй с вещами. Нужно сверить билеты и обеспечить доступность места без унизительного разговора.",
+      "sop_reference": "Приказ Минтранса № 352, п. 4",
+      "required_tools": [
+        "tablet_vsm",
+        "radio_bridge"
+      ],
+      "branches": [
+        {
+          "action_id": "act_enforce_mgn_rights",
+          "intent_label": "Твёрдо и корректно потребовать освободить место МГН",
+          "example_phrases": [
+            "Здравствуйте. Это место забронировано для пассажира с ограниченными возможностями здоровья по закону. Прошу освободить его сейчас — я помогу найти вам равнозначные свободные места."
+          ],
+          "sop_bonus": 4,
+          "outcomes": {
+            "critical_success": {
+              "nps_delta": 30,
+              "safety_delta": 0,
+              "procedure_delta": 25,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "nps_delta": 15,
+              "safety_delta": 0,
+              "procedure_delta": 20,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "nps_delta": -10,
+              "safety_delta": 0,
+              "procedure_delta": 5,
+              "status": "escalating",
+              "reaction_vector": "Вызвать ЛНП."
+            },
+            "critical_failure": {
+              "nps_delta": -30,
+              "safety_delta": 0,
+              "procedure_delta": -10,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 4,
+        "deadline_minutes": 10,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      }
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 4",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Перевозчик обеспечивает доступность услуг для пассажиров с инвалидностью наравне с другими."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_replaced_passport_01",
+    "menu_label": "Новый паспорт",
+    "type": "character",
+    "title": "Билет на старый паспорт",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 3,
+      "class_type": "standard",
+      "zone": "Посадка, вагон 3"
+    },
+    "character": {
+      "portrait_key": "inna",
+      "id": "char_vsm_replaced_passport_01",
+      "name": "Ольга",
+      "role": "Пассажирка с заменённым паспортом",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "female",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: Билет куплен по старому паспорту; новый паспорт содержит отметку о прежнем номере."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 88",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Новый паспорт с отметкой о ранее выданном позволяет сверить данные билета и допустить к поездке."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "Я поменяла паспорт после покупки билета. В новом есть отметка о старом. Посмотрите, пожалуйста.",
+      "context_description": "Билет куплен по старому паспорту; новый паспорт содержит отметку о прежнем номере.",
+      "sop_reference": "Приказ Минтранса № 352, п. 88",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "check_old_passport_mark",
+          "intent_label": "Новый паспорт с отметкой о ранее выданном позволяет сверить данные билета и допустить к поездке.",
+          "example_phrases": [
+            "Проверю отметку о прежнем паспорте и билет. Если данные сходятся, проходите."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Ольга принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Ольга принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "reject_replaced_passport",
+          "intent_label": "Номер в новом паспорте другой, поэтому билет сразу недействителен.",
+          "example_phrases": [
+            "Номер в новом паспорте другой, поэтому билет сразу недействителен."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Ольга указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Ольга указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Ольга указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Ольга указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.",
+        "failure_vector": "Ольга так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Ольга возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.",
+        "conversation_vector": "Ольга отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_seat_conflict_01",
+    "menu_label": "Одно место на двоих",
+    "type": "character",
+    "title": "Два пассажира на одном месте — задвоение",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 3,
+      "class_type": "comfort",
+      "zone": "Ряд 12, место 12Б"
+    },
+    "character": {
+      "portrait_key": "inna",
+      "id": "char_inna_seat",
+      "name": "Инна Михайловна",
+      "role": "Пассажирка, претендующая на указанное в билете место",
+      "archetype": "усталая_пассажирка",
+      "psychological_state": {
+        "patience": 30,
+        "aggression": 50,
+        "stress": 60,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Инна: едет с тяжёлой сумкой, устала, не готова идти на поводу"
+      ],
+      "mood_seed_variants": [
+        {
+          "tag": "оба_уставшие",
+          "patience_modifier": -15,
+          "aggression_modifier": 20
+        }
+      ],
+      "voice_profile": {
+        "pitch": "medium",
+        "speed": 1.15,
+        "tone": "взаимно раздражённые",
+        "tts_voice_hint": "ru-RU-SvetlanaNeural",
+        "gender": "female"
+      },
+      "dialogue_vector": "Просит проверить её билет и найти именно её место, не спорит от имени другого пассажира."
+    },
+    "interactions": {
+      "actors": [
+        {
+          "portrait_key": "igor",
+          "id": "char_petr_seat",
+          "name": "Пётр Сергеевич",
+          "role": "Пассажир, уже сидящий на спорном месте",
+          "archetype": "упрямый_пассажир",
+          "psychological_state": {
+            "patience": 30,
+            "aggression": 45,
+            "stress": 55,
+            "alcohol": 0
+          },
+          "hidden_biases": [
+            "Уверен, что его билет верный, и боится потерять место"
+          ],
+          "voice_profile": {
+            "gender": "male",
+            "tone": "раздражённо, но без угроз"
+          },
+          "dialogue_vector": "Показывает свой билет и ждёт проверки; не может знать, действителен ли билет другого человека.",
+          "initial_speech": "Я сижу на своём месте. Вот мой билет. Проверьте его, прежде чем просить меня пересесть.",
+          "zone": "Ряд 12, занятое место",
+          "callout_after_minutes": 0
+        }
+      ]
+    },
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 13,
+      "initial_speech": "У меня в билете указано 12Б, а здесь уже сидит мужчина. Помогите разобраться, пожалуйста.",
+      "context_description": "У двух пассажиров в билетах указан один номер места. Причина расхождения ещё не проверена.",
+      "sop_reference": "Приказ Минтранса № 352, п. 92",
+      "required_tools": [
+        "tablet_vsm"
+      ],
+      "branches": [
+        {
+          "action_id": "act_check_and_relocate_kindly",
+          "intent_label": "Проверить оба билета, взять вину системы, предложить равнозначное место",
+          "example_phrases": [
+            "Покажите, пожалуйста, оба билета. Я сверю вагон, поезд, дату и место, затем свяжусь со старшим поезда и предложу решение по правилам перевозчика."
+          ],
+          "sop_bonus": 4,
+          "outcomes": {
+            "critical_success": {
+              "nps_delta": 10,
+              "safety_delta": 0,
+              "procedure_delta": 20,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "nps_delta": -5,
+              "safety_delta": 0,
+              "procedure_delta": 15,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "nps_delta": -20,
+              "safety_delta": 0,
+              "procedure_delta": 5,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "nps_delta": -40,
+              "safety_delta": 0,
+              "procedure_delta": -10,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": [
+            "talk:char_inna_seat",
+            "talk:char_petr_seat"
+          ]
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 6,
+        "deadline_minutes": 14,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      }
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 92",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Каждый пассажир с билетом занимает указанное в нём место; устранение задвоения требует проверки билетов и правил перевозчика."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_speed_panic_01",
+    "menu_label": "Паника на скорости",
+    "type": "character",
+    "title": "Паника от скорости 400 км/ч",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 3,
+      "class_type": "comfort",
+      "zone": "Место 21А, у окна"
+    },
+    "character": {
+      "portrait_key": "tamara",
+      "id": "char_tamara_elderly",
+      "name": "Тамара Ивановна",
+      "role": "Пенсионерка, впервые на ВСМ",
+      "archetype": "тревожная_пожилая",
+      "psychological_state": {
+        "patience": 70,
+        "aggression": 10,
+        "stress": 85,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Никогда не ездила быстрее 160 км/ч, 400 км/ч — катастрофа",
+        "Лёгкая клаустрофобия: герметичный закрытый вагон пугает"
+      ],
+      "mood_seed_variants": [
+        {
+          "tag": "первый_раз_на_ВСМ",
+          "patience_modifier": 0,
+          "aggression_modifier": 0
+        }
+      ],
+      "voice_profile": {
+        "pitch": "high",
+        "speed": 1.3,
+        "tone": "испуганный, сбивчивый, умоляющий",
+        "tts_voice_hint": "ru-RU-SvetlanaNeural",
+        "gender": "female"
+      }
+    },
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 10,
+      "initial_speech": "Ой, миленький, я не могу, мне плохо! Мы так быстро едем, сердечко колотится, в ушах звенит. Остановите поезд, пожалуйста!",
+      "context_description": "Пажилой пассажирке плохо от скорости. Остановить поезд невозможно. Форточки открыть нельзя физически.",
+      "sop_reference": "Приказ Минтранса № 352, п. 10",
+      "required_tools": [
+        "medical_kit_basic",
+        "radio_bridge"
+      ],
+      "branches": [
+        {
+          "action_id": "act_calm_and_assist",
+          "intent_label": "Успокоить, объяснить безопасность, предложить воду и врача",
+          "example_phrases": [
+            "Тамара Ивановна, я рядом, всё в порядке. Поезд полностью безопасен — скорость не ощущается в герметичном вагоне, это как самолёт. Вот вода, присядьте удобнее. Если нехорошо с сердцем — я сейчас узнаю, есть ли врач среди пассажиров."
+          ],
+          "sop_bonus": 3,
+          "outcomes": {
+            "critical_success": {
+              "nps_delta": 35,
+              "safety_delta": 5,
+              "procedure_delta": 20,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "nps_delta": 15,
+              "safety_delta": 5,
+              "procedure_delta": 15,
+              "status": "in_progress",
+              "reaction_vector": "Объяснить про герметичность вагона ВСМ."
+            },
+            "failure": {
+              "nps_delta": -5,
+              "safety_delta": 0,
+              "procedure_delta": 5,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "nps_delta": 0,
+              "safety_delta": -10,
+              "procedure_delta": -20,
+              "status": "failed",
+              "reaction_vector": "Экстренный вызов ЛНП, объявление о враче."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 6,
+        "deadline_minutes": 14,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      }
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 10",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Пассажиру дают достоверную информацию; технические причины скорости нельзя выдумывать."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_station_arrival_notice_01",
+    "menu_label": "Скоро станция",
+    "type": "character",
+    "title": "Предупреждение о прибытии",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 2,
+      "class_type": "standard",
+      "zone": "Ряд 9, перед станцией"
+    },
+    "character": {
+      "portrait_key": "tamara",
+      "id": "char_vsm_station_arrival_notice_01",
+      "name": "Лидия",
+      "role": "Пассажирка, выходящая на следующей станции",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "female",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: До станции назначения пассажирки около пятнадцати минут; она волнуется, что пропустит выход."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 97",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202503140005",
+        "application": "В скоростном и высокоскоростном поезде предупреждают о прибытии не позднее чем за 15 минут."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "Мне выходить на следующей. Вы предупредите, когда готовиться?",
+      "context_description": "До станции назначения пассажирки около пятнадцати минут; она волнуется, что пропустит выход.",
+      "sop_reference": "Приказ Минтранса № 352, п. 97",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "announce_arrival_and_help",
+          "intent_label": "В скоростном и высокоскоростном поезде предупреждают о прибытии не позднее чем за 15 минут.",
+          "example_phrases": [
+            "До вашей станции около пятнадцати минут. Мы объявим прибытие; давайте подготовим вещи к выходу."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Лидия принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Лидия принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Пассажирка собирает сумку и снова спрашивает о времени прибытия.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Пассажирка собирает сумку и снова спрашивает о времени прибытия.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "withhold_arrival_notice",
+          "intent_label": "Следите сами за станциями, предупреждать вас никто не будет.",
+          "example_phrases": [
+            "Следите сами за станциями, предупреждать вас никто не будет."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Лидия указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Лидия указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Лидия указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Лидия указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Пассажирка собирает сумку и снова спрашивает о времени прибытия.",
+        "failure_vector": "Лидия так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Лидия возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Пассажирка собирает сумку и снова спрашивает о времени прибытия.",
+        "conversation_vector": "Лидия отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_ticket_one_typo_01",
+    "menu_label": "Одна цифра в билете",
+    "type": "character",
+    "title": "Одна ошибка в номере документа",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 2,
+      "class_type": "standard",
+      "zone": "Посадка, вагон 2"
+    },
+    "character": {
+      "portrait_key": "sergey",
+      "id": "char_vsm_ticket_one_typo_01",
+      "name": "Алексей",
+      "role": "Пассажир с опечаткой в билете",
+      "archetype": "пассажир_в_неопределённости",
+      "psychological_state": {
+        "patience": 45,
+        "aggression": 20,
+        "stress": 55,
+        "alcohol": 0
+      },
+      "hidden_biases": [
+        "Опасается потерять возможность решить вопрос во время поездки"
+      ],
+      "voice_profile": {
+        "gender": "male",
+        "tone": "живо, по ситуации"
+      },
+      "dialogue_vector": "Реагирует только на вопрос о ситуации: В билете пассажира одна переставленная цифра номера паспорта; остальные данные совпадают."
+    },
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 81",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Одна допустимая ошибка в номере документа сама по себе не препятствует посадке."
+      }
+    ],
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 12,
+      "initial_speech": "У меня в билете две цифры местами поменяны. Остальное совпадает. Меня пустят?",
+      "context_description": "В билете пассажира одна переставленная цифра номера паспорта; остальные данные совпадают.",
+      "sop_reference": "Приказ Минтранса № 352, п. 81",
+      "required_tools": [],
+      "branches": [
+        {
+          "action_id": "check_permitted_typo",
+          "intent_label": "Одна допустимая ошибка в номере документа сама по себе не препятствует посадке.",
+          "example_phrases": [
+            "Сверю билет с паспортом: при одной такой ошибке правила допускают проезд."
+          ],
+          "sop_bonus": 5,
+          "duration_minutes": 1,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Алексей принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "success": {
+              "reaction_vector": "Алексей принимает проверенный следующий шаг и благодарит за ясность.",
+              "status": "resolved",
+              "procedure_delta": 15,
+              "service_delta": 8,
+              "nps_delta": 8
+            },
+            "failure": {
+              "reaction_vector": "Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.",
+              "status": "escalating",
+              "procedure_delta": -4,
+              "service_delta": -3,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.",
+              "status": "escalating",
+              "procedure_delta": -10,
+              "service_delta": -10,
+              "nps_delta": -15
+            }
+          }
+        },
+        {
+          "action_id": "reject_single_typo",
+          "intent_label": "Из-за одной переставленной цифры я вас не пущу, покупать новый билет обязательно.",
+          "example_phrases": [
+            "Из-за одной переставленной цифры я вас не пущу, покупать новый билет обязательно."
+          ],
+          "is_violation": true,
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Алексей указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "success": {
+              "reaction_vector": "Алексей указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "failure": {
+              "reaction_vector": "Алексей указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            },
+            "critical_failure": {
+              "reaction_vector": "Алексей указывает, что вопрос остался нерешённым, и просит старшего поезда.",
+              "status": "escalating",
+              "procedure_delta": -15,
+              "service_delta": -15,
+              "nps_delta": -15
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 5,
+        "deadline_minutes": 12,
+        "warning_vector": "Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.",
+        "failure_vector": "Алексей так и не получил(а) ответа; ситуация завершилась без решения.",
+        "wrong_action_vector": "Алексей возражает против предложенного шага и просит проверить правило.",
+        "idle_vector": "Пассажир показывает паспорт и просит проверить допустимую ошибку до завершения посадки.",
+        "conversation_vector": "Алексей отвечает на вопрос, но всё ещё ждёт конкретного решения.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10
+      }
+    }
+  },
+  {
+    "scenario_id": "vsm_vaping_toilet_01",
+    "menu_label": "Дым в санузле",
+    "type": "character",
+    "title": "Вейп в санузле — датчик сработал",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 2,
+      "class_type": "business",
+      "zone": "Туалетный модуль"
+    },
+    "character": {
+      "portrait_key": "artem",
+      "id": "char_artem_young",
+      "name": "Артём",
+      "role": "Студент магистратуры",
+      "archetype": "беспечный_молодой",
+      "psychological_state": {
+        "patience": 55,
+        "aggression": 30,
+        "stress": 20,
+        "alcohol": 25
+      },
+      "hidden_biases": [
+        "Убеждён: электронные сигареты — это «просто пар», закон неприменим",
+        "Немного выпил — снижена критичность"
+      ],
+      "mood_seed_variants": [
+        {
+          "tag": "слегка_пьян",
+          "patience_modifier": 0,
+          "aggression_modifier": 15
+        }
+      ],
+      "voice_profile": {
+        "pitch": "medium_high",
+        "speed": 1.1,
+        "tone": "защищающийся, немного дерзкий",
+        "tts_voice_hint": "ru-RU-DmitryNeural",
+        "gender": "male"
+      }
+    },
+    "incident": {
+      "category": "rule_violation",
+      "urgency": "critical",
+      "difficulty_dc": 14,
+      "initial_speech": "(Выходит из туалета.) А что? Это вейп — там вообще нет дыма, только пар. Датчик ваш барахлит. Это не курение по закону.",
+      "context_description": "Датчик сработал на аэрозоль в санузле. Проводник должен проверить причину сигнала и напомнить о запрете потребления никотинсодержащей продукции в вагоне.",
+      "sop_reference": "Приказ Минтранса № 352, п. 12; ФЗ № 15, ст. 12 ч. 1",
+      "required_tools": [
+        "tablet_vsm",
+        "radio_bridge"
+      ],
+      "branches": [
+        {
+          "action_id": "act_protocol_register_and_lnp",
+          "intent_label": "Объяснить запрет, проверить сигнал и сообщить старшему поезда при повторе",
+          "example_phrases": [
+            "Датчик зафиксировал аэрозоль. В вагоне запрещено пользоваться вейпом. Пожалуйста, прекратите; если сигнал повторится, я сообщу старшему поезда для проверки."
+          ],
+          "sop_bonus": 5,
+          "outcomes": {
+            "critical_success": {
+              "nps_delta": -10,
+              "safety_delta": 30,
+              "procedure_delta": 25,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "nps_delta": -25,
+              "safety_delta": 25,
+              "procedure_delta": 20,
+              "status": "resolved",
+              "reaction_vector": "Недоволен, но подчинился. ПРОФЕССИОНАЛЬНЫЙ УСПЕХ."
+            },
+            "failure": {
+              "nps_delta": -40,
+              "safety_delta": 10,
+              "procedure_delta": 10,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "nps_delta": -50,
+              "safety_delta": 5,
+              "procedure_delta": 5,
+              "status": "escalating",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "act_soft_ignore",
+          "intent_label": "Проигнорировать сигнал и разрешить вейп",
+          "example_phrases": [
+            "Ну ладно, в следующий раз не надо. Идите на место."
+          ],
+          "sop_bonus": -10,
+          "outcomes": {
+            "critical_success": null,
+            "success": null,
+            "failure": {
+              "nps_delta": 30,
+              "safety_delta": -50,
+              "procedure_delta": -40,
+              "status": "failed",
+              "reaction_vector": "Пассажир продолжает пользоваться вейпом; сигнал требует повторной проверки и сообщения старшему поезда."
+            },
+            "critical_failure": {
+              "nps_delta": 30,
+              "safety_delta": -100,
+              "procedure_delta": -100,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 4,
+        "deadline_minutes": 10,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      }
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 12",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "В вагонах, включая тамбуры, запрещено потреблять никотинсодержащую продукцию."
+      },
+      {
+        "act": "ФЗ № 15",
+        "clause": "ст. 12 ч. 1",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001201302250007",
+        "application": "Федеральный запрет касается поездов дальнего следования; санкции применяют уполномоченные органы, а не проводник."
+      }
+    ]
+  },
+  {
+    "scenario_id": "vsm_vip_cold_coffee_01",
+    "menu_label": "Остывший кофе",
+    "type": "character",
+    "title": "Остывший кофе в первом классе",
+    "visual": {
+      "background": "carriage"
+    },
+    "location": {
+      "car_number": 1,
+      "class_type": "first_class",
+      "zone": "Переговорная капсула, место 3A"
+    },
+    "character": {
+      "portrait_key": "igor",
+      "id": "char_igor_investor",
+      "name": "Игорь Валентинович",
+      "role": "Инвестиционный директор, везёт договор на 200 млн",
+      "archetype": "властный_VIP",
+      "psychological_state": {
+        "patience": 20,
+        "aggression": 65,
+        "stress": 90,
+        "alcohol": 10
+      },
+      "hidden_biases": [
+        "Абсолютно уверен: деньги дают право требовать мгновенного исполнения",
+        "Заряжен с утра после конфликта с партнёром"
+      ],
+      "mood_seed_variants": [
+        {
+          "tag": "срыв_сделки",
+          "patience_modifier": -20,
+          "aggression_modifier": 25
+        },
+        {
+          "tag": "сделка_под_контролем",
+          "patience_modifier": 15,
+          "aggression_modifier": -10
+        }
+      ],
+      "voice_profile": {
+        "pitch": "low",
+        "speed": 0.85,
+        "tone": "холодный, веский, с угрозой в каждом слове",
+        "tts_voice_hint": "ru-RU-DmitryNeural",
+        "gender": "male"
+      }
+    },
+    "incident": {
+      "category": "service",
+      "urgency": "medium",
+      "difficulty_dc": 16,
+      "initial_speech": "Вот это — что? Это называется «горячий кофе»? Я платил за первый класс, а не за помои из термоса. У меня совещание через 40 минут в Zoom.",
+      "context_description": "Пассажир первого класса получил кофе ~50°C вместо 70°C. Замена обязательна.",
+      "sop_reference": "Приказ Минтранса № 352, п. 7",
+      "required_tools": [
+        "service_kit"
+      ],
+      "branches": [
+        {
+          "action_id": "act_instant_replace_plus_gift",
+          "intent_label": "Мгновенная замена + извинение + комплимент",
+          "example_phrases": [
+            "Прошу прощения — это совершенно недопустимо. Заберу немедленно, принесу свежий через две минуты. Позвольте предложить десерт от шеф-повара пока ждёте."
+          ],
+          "sop_bonus": 4,
+          "outcomes": {
+            "critical_success": {
+              "nps_delta": 20,
+              "safety_delta": 0,
+              "procedure_delta": 15,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "nps_delta": 5,
+              "safety_delta": 0,
+              "procedure_delta": 15,
+              "status": "resolved",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "nps_delta": -10,
+              "safety_delta": 0,
+              "procedure_delta": 5,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "nps_delta": -30,
+              "safety_delta": 0,
+              "procedure_delta": 0,
+              "status": "escalating",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "act_excuse_and_explain",
+          "intent_label": "Оправдываться и объяснять технические причины",
+          "example_phrases": [
+            "Понимаете, у нас скоростной поезд, вибрация, кофемашина работает в особом режиме..."
+          ],
+          "sop_bonus": -3,
+          "outcomes": {
+            "critical_success": {
+              "nps_delta": -10,
+              "safety_delta": 0,
+              "procedure_delta": -5,
+              "status": "resolved",
+              "reaction_vector": "С облегчением принимает помощь; явно благодарит и переходит к следующему шагу."
+            },
+            "success": {
+              "nps_delta": -20,
+              "safety_delta": 0,
+              "procedure_delta": -5,
+              "status": "in_progress",
+              "reaction_vector": "Сохраняет характер и эмоцию, но принимает предложенный следующий шаг."
+            },
+            "failure": {
+              "nps_delta": -35,
+              "safety_delta": 0,
+              "procedure_delta": -15,
+              "status": "escalating",
+              "reaction_vector": "Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт."
+            },
+            "critical_failure": {
+              "nps_delta": -50,
+              "safety_delta": 0,
+              "procedure_delta": -20,
+              "status": "failed",
+              "reaction_vector": "Резко возмущается и требует вмешательства ответственного сотрудника."
+            }
+          },
+          "duration_minutes": 1,
+          "requires": []
+        },
+        {
+          "action_id": "dismiss_passenger",
+          "intent_label": "Грубо отказать в помощи",
+          "example_phrases": [
+            "Это не моя проблема, уходите"
+          ],
+          "sop_bonus": -10,
+          "duration_minutes": 0.5,
+          "requires": [],
+          "outcomes": {
+            "critical_success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "success": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            },
+            "critical_failure": {
+              "reaction_vector": "Возмущается грубым отказом; исходная проблема остаётся нерешённой.",
+              "status": "escalating",
+              "service_delta": -40,
+              "nps_delta": -30
+            }
+          }
+        }
+      ],
+      "escalation": {
+        "warning_minutes": 6,
+        "deadline_minutes": 14,
+        "warning_vector": "Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.",
+        "failure_vector": "Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.",
+        "wrong_action_vector": "Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.",
+        "idle_vector": "Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.",
+        "warning_time_penalty": 10,
+        "failure_time_penalty": 30,
+        "wrong_action_penalty": 10,
+        "idle_time_penalty": 10,
+        "conversation_vector": "Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение ещё не достигнуто."
+      }
+    },
+    "aliases": [],
+    "legal_basis": [
+      {
+        "act": "Приказ Минтранса № 352",
+        "clause": "п. 7",
+        "url": "https://publication.pravo.gov.ru/Document/View/0001202210270033",
+        "application": "Улучшенный сервис может быть установлен правилами перевозчика; закон сам по себе не гарантирует температуру напитка."
+      }
+    ]
+  }
+]

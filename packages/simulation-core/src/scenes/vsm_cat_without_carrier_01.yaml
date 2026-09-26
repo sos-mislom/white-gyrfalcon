@@ -1,0 +1,99 @@
+scenario_id: vsm_cat_without_carrier_01
+menu_label: Кошка без переноски
+type: character
+title: Кошка выбралась из переноски
+visual:
+  background: carriage
+location:
+  car_number: 2
+  class_type: standard
+  zone: Ряд 5, у окна
+character:
+  portrait_key: elena
+  id: char_vsm_cat_without_carrier_01
+  name: Наталья
+  role: Пассажирка с кошкой
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: female
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: Кошка вышла из переноски на сиденье, соседний пассажир
+    опасается за неё и свои вещи.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: пп. 194, 197, 199
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Кошку перевозят в контейнере на месте для ручной клади; владелец соблюдает санитарный режим.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: Она спокойная, я просто выпустила её размяться. Можно оставить так?
+  context_description: Кошка вышла из переноски на сиденье, соседний пассажир опасается за неё и свои вещи.
+  sop_reference: Приказ Минтранса № 352, пп. 194, 197, 199
+  required_tools: []
+  branches:
+  - action_id: return_cat_to_carrier
+    intent_label: Кошку перевозят в контейнере на месте для ручной клади; владелец соблюдает санитарный режим.
+    example_phrases:
+    - Пожалуйста, поместите кошку в переноску. Я помогу найти удобное место для неё.
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Наталья принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: permit_loose_cat
+    intent_label: Пусть кошка свободно ходит по вагону, раз она спокойная.
+    example_phrases:
+    - Пусть кошка свободно ходит по вагону, раз она спокойная.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Наталья указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.
+    failure_vector: Наталья так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Наталья возражает против предложенного шага и просит проверить правило.
+    idle_vector: Кошка тянется к соседнему сиденью, хозяйка просит несколько минут на переноску.
+    conversation_vector: Наталья отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

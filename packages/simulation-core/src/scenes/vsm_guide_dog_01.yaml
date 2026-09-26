@@ -1,0 +1,102 @@
+scenario_id: vsm_guide_dog_01
+menu_label: Собака-проводник
+type: character
+title: Пассажир с собакой-проводником
+visual:
+  background: carriage
+location:
+  car_number: 3
+  class_type: standard
+  zone: Посадка, вагон 1
+character:
+  portrait_key: mikhail
+  id: char_vsm_guide_dog_01
+  name: Денис
+  role: Незрячий пассажир с собакой-проводником
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: male
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: Пассажир показывает документ об обучении собаки-проводника;
+    собака в ошейнике и наморднике у его ног.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 204
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Собака-проводник с подтверждением обучения перевозится в вагоне любого типа без платы и перевозочного
+    документа.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: Это моя собака-проводник. Документ при мне. Подскажите, как нам пройти к месту?
+  context_description: Пассажир показывает документ об обучении собаки-проводника; собака в ошейнике и наморднике
+    у его ног.
+  sop_reference: Приказ Минтранса № 352, п. 204
+  required_tools: []
+  branches:
+  - action_id: assist_guide_dog_boarding
+    intent_label: Собака-проводник с подтверждением обучения перевозится в вагоне любого типа без платы и перевозочного
+      документа.
+    example_phrases:
+    - Документ вижу. Собака-проводник едет с вами без отдельной платы; помогу пройти к месту.
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Денис принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: deny_guide_dog
+    intent_label: С собакой в этот вагон нельзя, оставьте её на станции.
+    example_phrases:
+    - С собакой в этот вагон нельзя, оставьте её на станции.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Денис указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.
+    failure_vector: Денис так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Денис возражает против предложенного шага и просит проверить правило.
+    idle_vector: Время посадки идёт; пассажир ждёт безопасного сопровождения к своему месту.
+    conversation_vector: Денис отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

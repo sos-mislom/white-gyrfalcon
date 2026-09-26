@@ -1,0 +1,148 @@
+scenario_id: vsm_seat_conflict_01
+menu_label: Одно место на двоих
+type: character
+title: Два пассажира на одном месте — задвоение
+visual:
+  background: carriage
+location:
+  car_number: 3
+  class_type: comfort
+  zone: Ряд 12, место 12Б
+character:
+  portrait_key: inna
+  id: char_inna_seat
+  name: Инна Михайловна
+  role: Пассажирка, претендующая на указанное в билете место
+  archetype: усталая_пассажирка
+  psychological_state:
+    patience: 30
+    aggression: 50
+    stress: 60
+    alcohol: 0
+  hidden_biases:
+  - 'Инна: едет с тяжёлой сумкой, устала, не готова идти на поводу'
+  mood_seed_variants:
+  - tag: оба_уставшие
+    patience_modifier: -15
+    aggression_modifier: 20
+  voice_profile:
+    pitch: medium
+    speed: 1.15
+    tone: взаимно раздражённые
+    tts_voice_hint: ru-RU-SvetlanaNeural
+    gender: female
+  dialogue_vector: Просит проверить её билет и найти именно её место, не спорит от имени другого пассажира.
+interactions:
+  actors:
+  - portrait_key: igor
+    id: char_petr_seat
+    name: Пётр Сергеевич
+    role: Пассажир, уже сидящий на спорном месте
+    archetype: упрямый_пассажир
+    psychological_state:
+      patience: 30
+      aggression: 45
+      stress: 55
+      alcohol: 0
+    hidden_biases:
+    - Уверен, что его билет верный, и боится потерять место
+    voice_profile:
+      gender: male
+      tone: раздражённо, но без угроз
+    dialogue_vector: Показывает свой билет и ждёт проверки; не может знать, действителен ли билет другого человека.
+    initial_speech: Я сижу на своём месте. Вот мой билет. Проверьте его, прежде чем просить меня пересесть.
+    zone: Ряд 12, занятое место
+    callout_after_minutes: 0
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 13
+  initial_speech: У меня в билете указано 12Б, а здесь уже сидит мужчина. Помогите разобраться, пожалуйста.
+  context_description: У двух пассажиров в билетах указан один номер места. Причина расхождения ещё не проверена.
+  sop_reference: Приказ Минтранса № 352, п. 92
+  required_tools:
+  - tablet_vsm
+  branches:
+  - action_id: act_check_and_relocate_kindly
+    intent_label: Проверить оба билета, взять вину системы, предложить равнозначное место
+    example_phrases:
+    - Покажите, пожалуйста, оба билета. Я сверю вагон, поезд, дату и место, затем свяжусь со старшим поезда и предложу
+      решение по правилам перевозчика.
+    sop_bonus: 4
+    outcomes:
+      critical_success:
+        nps_delta: 10
+        safety_delta: 0
+        procedure_delta: 20
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        nps_delta: -5
+        safety_delta: 0
+        procedure_delta: 15
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        nps_delta: -20
+        safety_delta: 0
+        procedure_delta: 5
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        nps_delta: -40
+        safety_delta: 0
+        procedure_delta: -10
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires:
+    - talk:char_inna_seat
+    - talk:char_petr_seat
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 6
+    deadline_minutes: 14
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 92
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Каждый пассажир с билетом занимает указанное в нём место; устранение задвоения требует проверки билетов
+    и правил перевозчика.

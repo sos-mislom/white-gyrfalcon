@@ -1,0 +1,137 @@
+scenario_id: vsm_env_emergency_brake_01
+menu_label: Резкое торможение
+type: environmental_emergency
+title: Экстренное торможение с 400 км/ч
+visual:
+  background: carriage
+location:
+  car_number: 0
+  class_type: all_cars
+  zone: Весь состав, перегон Тверь — Валдай
+character: null
+incident:
+  category: critical_emergency
+  urgency: critical
+  difficulty_dc: 15
+  trigger_event: Резкий удар и мощное замедление — автоматика обнаружила дерево на путях. С полок летят чемоданы.
+    Поезд встал в лесу. Аварийное освещение включено. По соседнему пути через 8 минут пройдёт встречный экспресс.
+  sop_reference: Приказ Минтранса № 352, п. 11(1)
+  required_tools:
+  - radio_bridge
+  - flashlight
+  - medical_kit_basic
+  branches:
+  - action_id: act_pa_lockdown_and_report
+    intent_label: PA оповещение + блокировка дверей + доклад ЛНП
+    example_phrases:
+    - Уважаемые пассажиры, сохраняйте спокойствие и оставайтесь на своих местах! Не подходите к дверям — контактный
+      рельс и соседний путь под напряжением. Пострадавшие — поднимите руку, я иду к вам.
+    sop_bonus: 5
+    outcomes:
+      critical_success:
+        system_narrative: 'Объявление чёткое. Паника спала за 20 сек. Двое ушибленных получили помощь. Доклад ЛНП:
+          состав целый, тяжёлых нет.'
+        safety_delta: 35
+        procedure_delta: 30
+        service_delta: 15
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        system_narrative: Объявление сделано. Группа пассажиров у тамбура — стюард удержал. ЛНП информирован.
+        safety_delta: 20
+        procedure_delta: 20
+        service_delta: 5
+        status: resolved
+        reaction_vector: Сохраняет характер и эмоцию, но принимает предложенный следующий шаг.
+      failure:
+        system_narrative: Объявление нечёткое, голос дрожал. 5 пассажиров ринулись к двери. Один нажал кнопку аварийного
+          открытия.
+        safety_delta: -25
+        procedure_delta: 0
+        service_delta: -15
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        system_narrative: Стюард растерялся и побежал в соседний вагон. В салоне паника. Пассажир открыл дверь и
+          выпрыгнул на насыпь под контактный рельс.
+        safety_delta: -100
+        procedure_delta: -50
+        service_delta: -50
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: act_open_door_for_air
+    intent_label: 'ГРУБАЯ ОШИБКА: Открыть дверь чтобы «подышали»'
+    example_phrases:
+    - Сейчас откроем дверь, подышите, не волнуйтесь.
+    sop_bonus: -15
+    outcomes:
+      critical_success: null
+      success: null
+      failure:
+        system_narrative: 'ЛНП по рации: «Немедленно заблокируйте дверь! По соседнему пути через 6 минут экспресс
+          400 км/ч!»'
+        safety_delta: -60
+        procedure_delta: -40
+        service_delta: -20
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        system_narrative: Пассажиры выходят на насыпь. Воздушный удар от встречного поезда.
+        safety_delta: -100
+        procedure_delta: -100
+        service_delta: -100
+        status: failed
+        reaction_vector: Резко возмущается и требует вмешательства ответственного сотрудника.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 4
+    deadline_minutes: 10
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+  initial_speech: Произошла нештатная ситуация. Оцените обстановку.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 11(1)
+  url: https://publication.pravo.gov.ru/Document/View/0001202503140005
+  application: Пассажир выполняет указания персонала по безопасности движения ВСМ. Порядок работы с тормозом — учебное
+    допущение.

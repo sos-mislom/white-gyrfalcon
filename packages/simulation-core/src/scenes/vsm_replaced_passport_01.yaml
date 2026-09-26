@@ -1,0 +1,99 @@
+scenario_id: vsm_replaced_passport_01
+menu_label: Новый паспорт
+type: character
+title: Билет на старый паспорт
+visual:
+  background: carriage
+location:
+  car_number: 3
+  class_type: standard
+  zone: Посадка, вагон 3
+character:
+  portrait_key: inna
+  id: char_vsm_replaced_passport_01
+  name: Ольга
+  role: Пассажирка с заменённым паспортом
+  archetype: пассажир_в_неопределённости
+  psychological_state:
+    patience: 45
+    aggression: 20
+    stress: 55
+    alcohol: 0
+  hidden_biases:
+  - Опасается потерять возможность решить вопрос во время поездки
+  voice_profile:
+    gender: female
+    tone: живо, по ситуации
+  dialogue_vector: 'Реагирует только на вопрос о ситуации: Билет куплен по старому паспорту; новый паспорт содержит
+    отметку о прежнем номере.'
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 88
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Новый паспорт с отметкой о ранее выданном позволяет сверить данные билета и допустить к поездке.
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 12
+  initial_speech: Я поменяла паспорт после покупки билета. В новом есть отметка о старом. Посмотрите, пожалуйста.
+  context_description: Билет куплен по старому паспорту; новый паспорт содержит отметку о прежнем номере.
+  sop_reference: Приказ Минтранса № 352, п. 88
+  required_tools: []
+  branches:
+  - action_id: check_old_passport_mark
+    intent_label: Новый паспорт с отметкой о ранее выданном позволяет сверить данные билета и допустить к поездке.
+    example_phrases:
+    - Проверю отметку о прежнем паспорте и билет. Если данные сходятся, проходите.
+    sop_bonus: 5
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success: &id001
+        reaction_vector: Ольга принимает проверенный следующий шаг и благодарит за ясность.
+        status: resolved
+        procedure_delta: 15
+        service_delta: 8
+        nps_delta: 8
+      success: *id001
+      failure:
+        reaction_vector: Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.
+        status: escalating
+        procedure_delta: -4
+        service_delta: -3
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.
+        status: escalating
+        procedure_delta: -10
+        service_delta: -10
+        nps_delta: -15
+  - action_id: reject_replaced_passport
+    intent_label: Номер в новом паспорте другой, поэтому билет сразу недействителен.
+    example_phrases:
+    - Номер в новом паспорте другой, поэтому билет сразу недействителен.
+    is_violation: true
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success: &id002
+        reaction_vector: Ольга указывает, что вопрос остался нерешённым, и просит старшего поезда.
+        status: escalating
+        procedure_delta: -15
+        service_delta: -15
+        nps_delta: -15
+      success: *id002
+      failure: *id002
+      critical_failure: *id002
+  escalation:
+    warning_minutes: 5
+    deadline_minutes: 12
+    warning_vector: Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.
+    failure_vector: Ольга так и не получил(а) ответа; ситуация завершилась без решения.
+    wrong_action_vector: Ольга возражает против предложенного шага и просит проверить правило.
+    idle_vector: Посадка заканчивается, пассажирка снова открывает страницу с отметкой старого паспорта.
+    conversation_vector: Ольга отвечает на вопрос, но всё ещё ждёт конкретного решения.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10

@@ -2,7 +2,6 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
   UnprocessableEntityException,
 } from "@nestjs/common";
 import { createHash } from "node:crypto";
@@ -16,14 +15,14 @@ import {
 import {
   allowedConsequences,
   applyAction,
-  BOARDING_SOURCE,
-  standardAnalysis,
-  standardPassengerReply,
+  SCENE_SOURCE,
+  sceneAnalysis,
+  getScenario,
 } from "@vsm/simulation-core";
 import { SessionRepository } from "../sessions/session.repository";
 import { AiAdapterService } from "./ai-adapter.service";
 import { screenConduct } from "./conduct-rules";
-import { actorIsGrounded, actorReference } from "./actor-grounding";
+import { actorDraftCanSurface, actorIsGrounded, actorReference } from "./actor-grounding";
 
 @Injectable()
 export class FreeformService {
@@ -76,20 +75,10 @@ export class FreeformService {
         message:
           "Уточните, чья это реплика: цитата, отрицание и угроза не равнозначны. Ход не применён.",
       });
-    if (
-      conduct?.kind === "violent_threat" &&
-      state.engineVersion === "boarding-2"
-    )
-      throw new UnprocessableEntityException({
-        code: "ai_intent_uncertain",
-        message:
-          "Для этого разбора начните новую попытку с актуальными правилами.",
-      });
-    const standard =
-      state.engineVersion === "boarding-4"
-        ? standardAnalysis(input.freeformText, state.completedActionIds)
-        : undefined;
-    let analysis;
+    const scene = getScenario(state.scenarioId);
+    if (!scene) throw new UnprocessableEntityException({ code: "unknown_scenario" });
+    const standard = sceneAnalysis(input.freeformText, scene);
+    let analysis: NluAnalysisDto;
     try {
       analysis = nluAnalysisSchema.parse(
         conduct?.analysis ??
@@ -98,30 +87,31 @@ export class FreeformService {
           (await this.ai.analyze(input.freeformText, state)),
       );
     } catch {
-      throw new ServiceUnavailableException({
-        code: "ai_unavailable",
-        message: "Используйте явные действия: AI недоступен, ход не применён.",
+      analysis = nluAnalysisSchema.parse({
+        matchedActionId: "converse", confidence: 1,
+        markers: { polite: false, empathy: false, rude: false, safetyViolation: false },
+        explanation: "Разговор продолжается без определённого действия",
       });
     }
-    if (
-      analysis.confidence < 0.75 ||
-      !state.availableActions.some(
-        (action) => action.id === analysis.matchedActionId,
-      )
-    )
+    if (analysis.markers.safetyViolation &&
+      (analysis.confidence < 0.75 ||
+        !state.availableActions.some(action => action.id === analysis.matchedActionId)))
       throw new UnprocessableEntityException({
         code: "ai_intent_uncertain",
-        message:
-          "Уточните ответ или выберите явное действие; оценка не изменена.",
+        message: "Уточните, разрешаете ли вы действие: от этого зависит оценка безопасности.",
       });
+    if (analysis.confidence < 0.75 ||
+      !state.availableActions.some(action => action.id === analysis.matchedActionId))
+      analysis = { ...analysis, matchedActionId: "converse", confidence: 1,
+        markers: { ...analysis.markers, safetyViolation: false } };
     // Fail closed on contradiction. This guard is not a substitute for live NLU validation.
     if (
-      (analysis.matchedActionId === "allow_boarding" &&
+      (Boolean(scene.incident.branches.find(b => b.action_id === analysis.matchedActionId)?.is_violation) &&
         /(?:^|[\s.,!?])(?:не|нельзя|невозможно)[\s,]/iu.test(
           input.freeformText,
         )) ||
       (analysis.markers.safetyViolation &&
-        analysis.matchedActionId !== "allow_boarding" &&
+        !scene.incident.branches.find(b => b.action_id === analysis.matchedActionId)?.is_violation &&
         !(
           analysis.matchedActionId === "dismiss_passenger" &&
           conduct?.kind === "violent_threat"
@@ -135,16 +125,14 @@ export class FreeformService {
       idempotencyKey: key,
       actionId: analysis.matchedActionId,
       clientTimestamp: input.clientTimestamp,
-      ...(state.engineVersion === "boarding-4"
-        ? {
-            communication: {
-              polite: analysis.markers.polite,
-              empathy: analysis.markers.empathy,
-              rude: analysis.markers.rude,
-              ...(input.interrupted ? { interrupted: true } : {}),
-            },
-          }
-        : {}),
+      utterance: input.freeformText,
+      ...(state.currentActorId ? { actorId: state.currentActorId } : {}),
+      communication: {
+        polite: analysis.markers.polite,
+        empathy: analysis.markers.empathy,
+        rude: analysis.markers.rude,
+        ...(input.interrupted ? { interrupted: true } : {}),
+      },
       ...(conduct?.kind === "violent_threat"
         ? { conduct: "violent_threat" as const }
         : {}),
@@ -156,58 +144,44 @@ export class FreeformService {
       reply: actorReference(next, input.freeformText),
     };
     let actorFallback = true;
-    const pooled =
-      !conduct && standard && analysis.confidence >= 0.95
-        ? standardPassengerReply(next, input.freeformText)
-        : undefined;
-    if (pooled) {
-      actor.reply = pooled;
+    try {
+    const proposed = actorResponseSchema.parse(
+      await this.ai.act(
+        next,
+        consequences,
+        {
+          employee_speech: input.freeformText,
+          markers: analysis.markers,
+          previousPassengerReply: state.appliedActions.at(-1)?.actorReply ?? state.passengerReply,
+        },
+        onDraft ? (draft) => { if (actorDraftCanSurface(next, draft)) onDraft(draft); } : undefined,
+      ),
+    );
+    if (
+      consequences.some(
+        (outcome) => outcome.id === proposed.consequenceId,
+      ) &&
+      actorIsGrounded(next, proposed, input.freeformText)
+    ) {
+      actor = proposed;
       actorFallback = false;
-    } else
-      try {
-        const proposed = actorResponseSchema.parse(
-          await this.ai.act(
-            next,
-            consequences,
-            {
-              employee_speech: input.freeformText,
-              markers: analysis.markers,
-              previousPassengerReply: state.passengerReply,
-            },
-            onDraft,
-          ),
-        );
-        const contradictsPermission =
-          proposed.consequenceId === "boarding_permission_granted" &&
-          /не\s+(?:мог|смог|разреш|пуст|удалось|пройти)/iu.test(proposed.reply);
-        if (
-          consequences.some(
-            (outcome) => outcome.id === proposed.consequenceId,
-          ) &&
-          !contradictsPermission &&
-          actorIsGrounded(next, proposed, input.freeformText)
-        ) {
-          actor = proposed;
-          actorFallback = false;
-        }
-      } catch {
-        /* NLU succeeded. Deterministic narrative remains available without actor. */
-      }
-    if (command.communication?.interrupted && command.communication.rude && !actor.reply.includes("Не перебивайте"))
-      actor.reply = `Не перебивайте меня! ${actor.reply}`.slice(0, 500);
+    }
+    } catch {
+      /* Keep a grounded fallback if the model fails. */
+    }
+    const committedCommand = { ...command, actorReply: actor.reply };
+    const committedNext = applyAction(state, committedCommand);
     const result: FreeformActionResultDto = {
-      session: next,
-      command,
+      session: committedNext,
+      command: committedCommand,
       analysis,
       allowedConsequences: consequences,
       actor,
       actorFallback,
-      source: BOARDING_SOURCE,
+      source: scene.incident.sop_reference || SCENE_SOURCE,
       execution: "server",
       // Old browser builds validate this response strictly; keep their wire shape intact.
-      ...(state.engineVersion === "boarding-4" ? {
-        responseMode: pooled ? "pool" as const : actorFallback ? "fallback" as const : "generated" as const,
-      } : {}),
+      responseMode: actorFallback ? "fallback" as const : "generated" as const,
     };
     try {
       await this.repository.mutate(
@@ -218,7 +192,7 @@ export class FreeformService {
             current.appliedActions.length !== state.appliedActions.length
           )
             throw new ConflictException({ code: "session_changed" });
-          return next;
+          return committedNext;
         },
         result,
       );

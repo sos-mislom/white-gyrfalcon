@@ -1,0 +1,268 @@
+scenario_id: vsm_boarding_no_ticket_01
+featured: true
+menu_label: Посадка без билета
+type: character
+title: Сбой приложения на посадке — деньги списались, билета нет
+visual:
+  background: departure
+location:
+  car_number: 5
+  class_type: standard
+  zone: Тамбур, вход в вагон
+character:
+  id: char_sergei_IT
+  portrait_key: sergey
+  name: Сергей Андреевич
+  role: Менеджер по продажам, командировка в СПб
+  archetype: спешащий_деловой
+  psychological_state:
+    patience: 35
+    aggression: 55
+    stress: 80
+    alcohol: 0
+  hidden_biases:
+  - Убежден, что «технологии виноваты, не он» — любой сбой системы считает проблемой перевозчика
+  - 'Легкий снобизм к молодым проводницам: ожидает, что они не разберутся с техническими деталями'
+  mood_seed_variants:
+  - tag: опаздывает_на_совещание
+    patience_modifier: -15
+    aggression_modifier: 20
+  - tag: нейтральный_день
+    patience_modifier: 0
+    aggression_modifier: 0
+  voice_profile:
+    pitch: medium_low
+    speed: 1.2
+    tone: напряженный, отрывистый, нетерпеливый
+    tts_voice_hint: ru-RU-DmitryNeural
+    gender: male
+incident:
+  category: rule_check
+  urgency: high
+  difficulty_dc: 13
+  initial_speech: Подождите, у меня всё оплачено! Вот — скриншот списания с карты, 4 200 рублей. Ваше приложение
+    просто глючит! Поезд через 3 минуты уходит!
+  context_description: Пассажир предъявляет скриншот банковской операции. В системе «Экспресс» билет не числится.
+    Поезд отправляется через 3 минуты. По Приказу Минтранса № 352 п. 18 — без действительного проездного документа
+    посадка запрещена.
+  sop_reference: Приказ Минтранса № 352, п. 79
+  required_tools:
+  - tablet_vsm
+  branches:
+  - action_id: ask_for_ticket
+    intent_label: Проверить билет и данные покупки
+    example_phrases:
+    - Покажите, пожалуйста, ваш билет
+    sop_bonus: 0
+    duration_minutes: 1
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем
+          шаге.
+        status: in_progress
+        procedure_delta: 0
+      success:
+        reaction_vector: Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем
+          шаге.
+        status: in_progress
+        procedure_delta: 0
+      failure:
+        reaction_vector: Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем
+          шаге.
+        status: in_progress
+        procedure_delta: 0
+      critical_failure:
+        reaction_vector: Показывает заказ и подтверждение списания; действительного билета нет. Спрашивает о следующем
+          шаге.
+        status: in_progress
+        procedure_delta: 0
+    match_patterns:
+    - '^(?:пожалуйста )?(?:покажите|предъявите) (?:пожалуйста )?(?:ваш )?(?:билет|билет и документ|билет и паспорт)(?:
+      пожалуйста)?$'
+  - action_id: explain_rules
+    intent_label: Объяснить, почему списание не заменяет билет
+    example_phrases:
+    - Без билета посадка невозможна, пожалуйста, обратитесь в кассу
+    sop_bonus: 0
+    duration_minutes: 1
+    requires:
+    - ask_for_ticket
+    missing_requirement:
+      reaction_vector: Правило сообщено до проверки обстоятельств; пассажир чувствует формальный отказ и просит
+        разобраться.
+      status: escalating
+      procedure_delta: -20
+    outcomes:
+      critical_success:
+        reaction_vector: Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.
+        status: in_progress
+        procedure_delta: 0
+      success:
+        reaction_vector: Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.
+        status: in_progress
+        procedure_delta: 0
+      failure:
+        reaction_vector: Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.
+        status: in_progress
+        procedure_delta: 0
+      critical_failure:
+        reaction_vector: Понимает, что списание не равно билету; уточняет, куда обратиться до отправления.
+        status: in_progress
+        procedure_delta: 0
+    match_patterns:
+    - '^(?:я )?(?:не могу вас посадить|не разрешаю посадку|не пущу(?: вас)?|нельзя пройти|посадка запрещена) без
+      (?:действительного )?билета(?: (?:пройдите|обратитесь) в кассу(?: №?\d{1,3})?)?$'
+  - action_id: offer_help
+    intent_label: Назвать конкретный маршрут помощи
+    example_phrases:
+    - Обратитесь в кассу №3 или официальный контактный центр
+    sop_bonus: 2
+    duration_minutes: 1
+    requires:
+    - explain_rules
+    missing_requirement:
+      reaction_vector: Направление названо без объяснения ограничения; пассажир сомневается и просит разъяснить.
+      status: escalating
+      procedure_delta: -10
+    outcomes:
+      critical_success:
+        reaction_vector: Искренне благодарен; направляется за помощью, билета пока нет.
+        status: in_progress
+        nps_delta: 30
+      success:
+        reaction_vector: Принимает маршрут помощи, всё ещё торопится; билета пока нет.
+        status: in_progress
+        nps_delta: 10
+      failure:
+        reaction_vector: Сомневается, что успеет; просит ответственного сотрудника, напряжение растёт.
+        status: escalating
+        nps_delta: -15
+      critical_failure:
+        reaction_vector: Возмущён, грозит жалобой, но просит точный адрес помощи.
+        status: escalating
+        nps_delta: -40
+    match_patterns:
+    - '^(?:пожалуйста )?(?:обратитесь|пройдите|подойдите) в (?:кассу(?: №?\d{1,3})?|(?:официальный )?контактный
+      центр)(?: там помогут)?(?: пожалуйста)?$'
+  - action_id: close_conversation
+    intent_label: Подтвердить понимание и завершить разговор
+    example_phrases:
+    - Всего доброго, вам всё понятно?
+    sop_bonus: 0
+    duration_minutes: 0.5
+    requires:
+    - explain_rules
+    - offer_help
+    missing_requirement:
+      reaction_vector: Разговор пытаются завершить без понятного маршрута помощи; пассажир задаёт вопрос снова.
+      status: escalating
+      procedure_delta: -20
+    outcomes:
+      critical_success:
+        reaction_vector: Знает следующий шаг и прощается, сохраняя текущую эмоцию.
+        status: resolved
+      success:
+        reaction_vector: Знает следующий шаг и прощается, сохраняя текущую эмоцию.
+        status: resolved
+      failure:
+        reaction_vector: Знает следующий шаг и прощается, сохраняя текущую эмоцию.
+        status: resolved
+      critical_failure:
+        reaction_vector: Знает следующий шаг и прощается, сохраняя текущую эмоцию.
+        status: resolved
+    match_patterns:
+    - ^(?:(?:всего доброго|до свидания|счастливого пути|спасибо|вам все понятно) ?)+$
+  - action_id: allow_boarding
+    intent_label: Разрешить посадку без действительного билета
+    example_phrases:
+    - Ладно, проходите так
+    match_patterns:
+    - '^(?:ладно )?(?:проходите|садитесь|пущу вас|можете пройти)(?: так| без билета)?(?: только быстрее)?$'
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    is_violation: true
+    outcomes:
+      critical_success:
+        reaction_vector: Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.
+        status: failed
+        procedure_delta: -70
+        safety_delta: -70
+        nps_delta: 30
+      success:
+        reaction_vector: Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.
+        status: failed
+        procedure_delta: -70
+        safety_delta: -70
+        nps_delta: 30
+      failure:
+        reaction_vector: Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.
+        status: failed
+        procedure_delta: -70
+        safety_delta: -70
+        nps_delta: 30
+      critical_failure:
+        reaction_vector: Пассажир принимает разрешение пройти; билет не появился, правило нарушил проводник.
+        status: failed
+        procedure_delta: -70
+        safety_delta: -70
+        nps_delta: 30
+  - action_id: dismiss_passenger
+    intent_label: Отказать грубо без помощи
+    example_phrases:
+    - Это не мои проблемы, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущён грубостью проводника; просит объяснить, куда ему обратиться.
+        status: escalating
+        service_delta: -50
+        nps_delta: -40
+      success:
+        reaction_vector: Возмущён грубостью проводника; просит объяснить, куда ему обратиться.
+        status: escalating
+        service_delta: -50
+        nps_delta: -40
+      failure:
+        reaction_vector: Возмущён грубостью проводника; просит объяснить, куда ему обратиться.
+        status: escalating
+        service_delta: -50
+        nps_delta: -40
+      critical_failure:
+        reaction_vector: Возмущён грубостью проводника; просит объяснить, куда ему обратиться.
+        status: escalating
+        service_delta: -50
+        nps_delta: -40
+  escalation:
+    warning_minutes: 4
+    deadline_minutes: 10
+    warning_vector: Время идёт; поезд требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+aliases:
+- boarding_no_ticket
+grounding:
+  forbidden_reply_patterns:
+  - полици|арест|задержан
+  forbidden_reply_patterns_by_action:
+    offer_help:
+    - (?:поехал|ушел|ушёл|направился|добрался|уже\s+в\s+кассе)
+    allow_boarding:
+    - (?:посадка\s+запрещена|не\s+пустите|не\s+могу\s+сесть|нечего\s+делать|не\s+допускается|нельзя|но\s+без\s+билета)
+  required_terms_by_action:
+    ask_for_ticket: билет|заказ|почт|оплат|прилож|паспорт|списан|штрихкод
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 79
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: При посадке предъявляют билет и документ, по которому он оформлен.

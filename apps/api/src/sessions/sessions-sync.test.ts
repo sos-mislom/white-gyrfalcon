@@ -55,4 +55,19 @@ describe("session synchronization", () => {
     ).rejects.toMatchObject({ status: 400 });
     expect(await repository.get(id)).toBeUndefined();
   });
+  it("keeps device profiles separate and refuses a second device claiming the same session", async () => {
+    const service = new SessionsService(new MemorySessionRepository());
+    const first = "a".repeat(64), second = "b".repeat(64);
+    const journal: SyncSessionDto = {
+      engineVersion: ENGINE_VERSION,
+      setup: { scenarioId: "boarding_no_ticket", difficulty: 1, seed: 42, mode: "training" },
+      commands: [],
+    };
+    const one = crypto.randomUUID(), two = crypto.randomUUID();
+    await service.sync(one, journal, first);
+    await service.sync(two, journal, second);
+    expect((await service.profileSessions(first)).map((state) => state.id)).toEqual([one]);
+    expect((await service.profileSessions(second)).map((state) => state.id)).toEqual([two]);
+    await expect(service.sync(one, journal, second)).rejects.toMatchObject({ status: 409 });
+  });
 });

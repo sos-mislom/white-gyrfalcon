@@ -1,0 +1,128 @@
+scenario_id: vsm_speed_panic_01
+menu_label: Паника на скорости
+type: character
+title: Паника от скорости 400 км/ч
+visual:
+  background: carriage
+location:
+  car_number: 3
+  class_type: comfort
+  zone: Место 21А, у окна
+character:
+  portrait_key: tamara
+  id: char_tamara_elderly
+  name: Тамара Ивановна
+  role: Пенсионерка, впервые на ВСМ
+  archetype: тревожная_пожилая
+  psychological_state:
+    patience: 70
+    aggression: 10
+    stress: 85
+    alcohol: 0
+  hidden_biases:
+  - Никогда не ездила быстрее 160 км/ч, 400 км/ч — катастрофа
+  - 'Лёгкая клаустрофобия: герметичный закрытый вагон пугает'
+  mood_seed_variants:
+  - tag: первый_раз_на_ВСМ
+    patience_modifier: 0
+    aggression_modifier: 0
+  voice_profile:
+    pitch: high
+    speed: 1.3
+    tone: испуганный, сбивчивый, умоляющий
+    tts_voice_hint: ru-RU-SvetlanaNeural
+    gender: female
+incident:
+  category: service
+  urgency: medium
+  difficulty_dc: 10
+  initial_speech: Ой, миленький, я не могу, мне плохо! Мы так быстро едем, сердечко колотится, в ушах звенит. Остановите
+    поезд, пожалуйста!
+  context_description: Пажилой пассажирке плохо от скорости. Остановить поезд невозможно. Форточки открыть нельзя
+    физически.
+  sop_reference: Приказ Минтранса № 352, п. 10
+  required_tools:
+  - medical_kit_basic
+  - radio_bridge
+  branches:
+  - action_id: act_calm_and_assist
+    intent_label: Успокоить, объяснить безопасность, предложить воду и врача
+    example_phrases:
+    - Тамара Ивановна, я рядом, всё в порядке. Поезд полностью безопасен — скорость не ощущается в герметичном вагоне,
+      это как самолёт. Вот вода, присядьте удобнее. Если нехорошо с сердцем — я сейчас узнаю, есть ли врач среди
+      пассажиров.
+    sop_bonus: 3
+    outcomes:
+      critical_success:
+        nps_delta: 35
+        safety_delta: 5
+        procedure_delta: 20
+        status: resolved
+        reaction_vector: С облегчением принимает помощь; явно благодарит и переходит к следующему шагу.
+      success:
+        nps_delta: 15
+        safety_delta: 5
+        procedure_delta: 15
+        status: in_progress
+        reaction_vector: Объяснить про герметичность вагона ВСМ.
+      failure:
+        nps_delta: -5
+        safety_delta: 0
+        procedure_delta: 5
+        status: escalating
+        reaction_vector: Не удовлетворён решением; требует конкретного следующего шага, напряжение растёт.
+      critical_failure:
+        nps_delta: 0
+        safety_delta: -10
+        procedure_delta: -20
+        status: failed
+        reaction_vector: Экстренный вызов ЛНП, объявление о враче.
+    duration_minutes: 1
+    requires: []
+  - action_id: dismiss_passenger
+    intent_label: Грубо отказать в помощи
+    example_phrases:
+    - Это не моя проблема, уходите
+    sop_bonus: -10
+    duration_minutes: 0.5
+    requires: []
+    outcomes:
+      critical_success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      success:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+      critical_failure:
+        reaction_vector: Возмущается грубым отказом; исходная проблема остаётся нерешённой.
+        status: escalating
+        service_delta: -40
+        nps_delta: -30
+  escalation:
+    warning_minutes: 6
+    deadline_minutes: 14
+    warning_vector: Время идёт; ситуация требует решения прямо сейчас. Персонаж заметно теряет терпение.
+    failure_vector: Время на решение вышло; ситуация ухудшилась, персонаж констатирует бездействие.
+    wrong_action_vector: Проводник предлагает неподходящий шаг; персонаж указывает на нерешённую исходную проблему.
+    idle_vector: Проводник молчит; персонаж сам напоминает о проблеме и просит конкретного действия.
+    warning_time_penalty: 10
+    failure_time_penalty: 30
+    wrong_action_penalty: 10
+    idle_time_penalty: 10
+    conversation_vector: Персонаж отвечает на свободную реплику, удерживая исходную проблему и свой характер; решение
+      ещё не достигнуто.
+aliases: []
+legal_basis:
+- act: Приказ Минтранса № 352
+  clause: п. 10
+  url: https://publication.pravo.gov.ru/Document/View/0001202210270033
+  application: Пассажиру дают достоверную информацию; технические причины скорости нельзя выдумывать.

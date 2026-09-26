@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { SessionsController } from "./sessions.controller";
+import { ProfilesController } from "./profiles.controller";
 import { SessionsService } from "./sessions.service";
 import {
   MemorySessionRepository,
@@ -11,7 +12,7 @@ import { FreeformService } from "../ai/freeform.service";
 import { AiAdapterService } from "../ai/ai-adapter.service";
 
 @Module({
-  controllers: [SessionsController],
+  controllers: [SessionsController, ProfilesController],
   providers: [
     SessionsService,
     FreeformService,
