@@ -1,23 +1,48 @@
 ﻿import type { SessionStateDto, FreeformActionResultDto } from "@vsm/api-contracts";
 
+import { getScenario } from "@vsm/simulation-core";
+
 export interface StandAxis { label: string; value: number }
 
 const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
 export function standAxes(session: SessionStateDto, feedback?: FreeformActionResultDto): StandAxis[] {
-  const markers = feedback?.analysis?.markers;
-  const calm = markers?.rude ? 25 : markers?.polite ? 78 : Math.round((session.scores.service + session.scores.safety) / 2);
-  const persuasion = session.outcome === "resolved"
-    ? Math.max(68, Math.round((session.scores.service + session.scores.procedure) / 2))
-    : Math.round(session.scores.service * 0.55);
+  const branches = getScenario(session.scenarioId)?.incident.branches ?? [];
+  const byId = new Map(branches.map((branch) => [branch.action_id, branch]));
+  const requiredPath = (id: string, visited = new Set<string>()): Set<string> => {
+    if (visited.has(id)) return visited;
+    visited.add(id);
+    for (const prerequisite of byId.get(id)?.requires ?? []) requiredPath(prerequisite, visited);
+    return visited;
+  };
+  const completed = new Set(session.completedActionIds);
+  const paths = branches
+    .filter((branch) => !branch.is_violation && Object.values(branch.outcomes).some((outcome) => outcome?.status === "resolved"))
+    .map((branch) => requiredPath(branch.action_id));
+  const progress = paths.length
+    ? Math.max(...paths.map((path) => [...path].filter((id) => completed.has(id)).length / path.size))
+    : 0;
+  const earned = session.outcome === "resolved" ? progress : Math.min(progress, 0.7);
+  const saidSomething = session.appliedActions.some((action) => Boolean(action.utterance?.trim()));
+  const rude = feedback?.analysis?.markers.rude || session.appliedActions.some((action) => action.communication?.rude);
+  const polite = feedback?.analysis?.markers.polite || session.appliedActions.some((action) => action.communication?.polite);
+  const empathy = feedback?.analysis?.markers.empathy || session.appliedActions.some((action) => action.communication?.empathy);
+  const calm = earned * (rude ? 35 : polite ? 90 : 75);
+  const service = earned * (70 + (saidSomething ? 10 : 0) + (empathy ? 20 : 0));
+  const persuasion = earned * (session.outcome === "resolved" ? 75 + (saidSomething ? 15 : 0) : 45);
   return [
-    { label: "Регламент", value: clamp(session.scores.procedure) },
-    { label: "Безопасность", value: clamp(session.scores.safety) },
-    { label: "Сервис", value: clamp(session.scores.service) },
-    { label: "Хладнокровие", value: clamp(calm) },
-    { label: "Темп", value: clamp(session.scores.timeManagement) },
+    { label: "Регламент", value: clamp(Math.min(session.scores.procedure, earned * 100)) },
+    { label: "Безопасность", value: clamp(Math.min(session.scores.safety, earned * 100)) },
+    { label: "Сервис", value: clamp(Math.min(session.scores.service, service)) },
+    { label: "Хладнокровие", value: clamp(Math.min(session.scores.communication, calm)) },
+    { label: "Темп", value: clamp(Math.min(session.scores.timeManagement, earned * 100)) },
     { label: "Убедительность", value: clamp(persuasion) },
   ];
+}
+
+export function standOverall(session: SessionStateDto, feedback?: FreeformActionResultDto): number {
+  const axes = standAxes(session, feedback).filter((_, index) => index !== 3 && index !== 5);
+  return Math.round(axes.reduce((sum, axis) => sum + axis.value, 0) / axes.length);
 }
 
 function point(index: number, radius: number) {

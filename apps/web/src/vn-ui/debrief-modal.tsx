@@ -2,7 +2,7 @@
 
 import type { Ref } from "react";
 import type { FreeformActionResultDto, SessionStateDto } from "@vsm/api-contracts";
-import { StandRadar, standAxes } from "./stand-radar";
+import { StandRadar, standAxes, standOverall } from "./stand-radar";
 import { getScenario } from "@vsm/simulation-core";
 
 interface DebriefModalProps {
@@ -21,11 +21,12 @@ export function DebriefModal({ session, reply, feedback, disabled, onRestart, on
   const axes = standAxes(session, feedback);
   const measured = axes.filter((_, index) => index !== 3 && index !== 5);
   const strongest = measured.reduce((a, b) => a.value >= b.value ? a : b);
-  const overall = Math.round(measured.reduce((sum, axis) => sum + axis.value, 0) / measured.length);
+  const overall = standOverall(session, feedback);
+  const style = overall === 0 ? "Без действий" : strongest.label;
   const title = success ? "Смена завершена" : session.outcome === "abandoned" ? "Сцена прервана" : "Ситуация не разрешена";
   const norms = getScenario(session.scenarioId)?.legal_basis ?? [];
   const share = async () => {
-    const text = `Белый кречет · ${title}\n${overall} баллов · ${strongest.label}`;
+    const text = `Белый кречет · ${title}\n${overall} баллов · ${style}`;
     try {
       if (navigator.share) await navigator.share({ title: "Белый кречет", text });
       else await navigator.clipboard.writeText(text);
@@ -36,7 +37,7 @@ export function DebriefModal({ session, reply, feedback, disabled, onRestart, on
       <div className="vn-debrief-top"><span className="vn-debrief-kicker">ИТОГ СМЕНЫ</span><span className="vn-debrief-star" aria-hidden="true">✧</span></div>
       <div className="vn-debrief-heading"><span className="vn-debrief-number">{overall}<small>/100</small></span><div><h2 id="debrief-title" tabIndex={-1} ref={titleRef}>{title}</h2><p>{success ? "Вы нашли путь к решению." : session.outcome === "abandoned" ? "Ситуация осталась без решения." : "Решение не было найдено вовремя."}</p></div></div>
       {reply && <blockquote className="vn-final-quote"><p>«{reply}»</p><cite>{characterName}</cite></blockquote>}
-      <div className="vn-debrief-section-title"><span>ВАШ СТИЛЬ</span><strong>{strongest.label}</strong></div>
+      <div className="vn-debrief-section-title"><span>ВАШ СТИЛЬ</span><strong>{style}</strong></div>
       <StandRadar axes={axes} id={`debrief-${session.id}`} />
       <section className="vn-debrief-norms" aria-label="Правовая основа сцены">
         <h3>ОСНОВАНИЕ</h3>

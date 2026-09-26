@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getScenario, listScenarios, type ScenarioSummaryDto } from "@vsm/simulation-core";
 import type { SessionStateDto } from "@vsm/api-contracts";
-import { StandRadar, standAxes } from "./stand-radar";
+import { StandRadar, standAxes, standOverall } from "./stand-radar";
 
 type Tab = "scenes" | "history" | "ranking" | "profile";
 type Filter = "all" | "character" | "environment";
@@ -27,8 +27,7 @@ const tabs: { key: Tab; label: string; icon: "train" | "ticket" | "medal" | "pro
   { key: "profile", label: "Профиль", icon: "profile" },
 ];
 function score(session: SessionStateDto) {
-  const values = Object.values(session.scores);
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+  return standOverall(session);
 }
 function scenePortrait(scene: ScenarioSummaryDto) {
   const key = getScenario(scene.scenarioId)?.character?.portrait_key;
