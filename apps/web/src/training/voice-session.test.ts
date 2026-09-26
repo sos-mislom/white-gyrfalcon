@@ -121,3 +121,42 @@ it("combines speech across short pauses and sends after two seconds of silence",
     vi.unstubAllGlobals();
   }
 });
+it("keeps browser dictation open through a short pause between sentences", async () => {
+  vi.useFakeTimers();
+  const sent = vi.fn();
+  let vadOptions: { onSpeechStart: () => void; onSpeechEnd: () => void } | undefined;
+  vi.mocked(MicVAD.new).mockImplementation(async (options) => {
+    vadOptions = options as typeof vadOptions;
+    return { start: async () => {}, destroy: async () => {} } as unknown as MicVAD;
+  });
+  class Recognition {
+    onresult?: (event: unknown) => void;
+    onend?: () => void;
+    start = vi.fn();
+    stop = vi.fn(() => this.onend?.());
+    abort = vi.fn();
+  }
+  const recognition = new Recognition();
+  vi.stubGlobal("window", {
+    SpeechRecognition: class { constructor() { return recognition; } },
+    speechSynthesis: { speaking: false, cancel: vi.fn() },
+  });
+  const voice = new VoiceSession(sent, () => {});
+  try {
+    await voice.start();
+    vadOptions!.onSpeechStart();
+    recognition.onresult?.({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: "Покажите билет." } }] });
+    vadOptions!.onSpeechEnd();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(sent).not.toHaveBeenCalled();
+    vadOptions!.onSpeechStart();
+    recognition.onresult?.({ resultIndex: 0, results: [{ isFinal: true, 0: { transcript: "Я уточню место." } }] });
+    vadOptions!.onSpeechEnd();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(sent).toHaveBeenCalledExactlyOnceWith("Покажите билет. Я уточню место.", false);
+  } finally {
+    await voice.stop();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});

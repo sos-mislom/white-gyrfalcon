@@ -131,7 +131,8 @@ export class VoiceSession {
             void this.stop();
             return;
           }
-          this.onStatus("Речь не распознана. Скажите фразу ещё раз.");
+          if (this.transcript) this.scheduleSilenceFlush();
+          else if (error !== "recognition_error_7") this.onStatus("Речь не распознана. Скажите фразу ещё раз.");
         } else if (!done) {
           if (text.trim()) this.clearSilenceTimer();
           this.onPartial?.(`${this.transcript} ${text}`.trim().slice(0, 500));
@@ -143,7 +144,7 @@ export class VoiceSession {
         if (done && this.enabled)
           window.setTimeout(() => {
             if (this.enabled) this.native?.startListening();
-          }, 200);
+          }, error === "recognition_error_8" ? 700 : 300);
       };
       this.native.startListening();
       this.onStatus("Слушаю. Слова появятся в поле ответа.");
@@ -172,13 +173,11 @@ export class VoiceSession {
         else interim += ` ${result[0].transcript}`;
       }
       this.onPartial?.(`${this.transcript} ${interim}`.trim().slice(0, 500));
+      if (this.browserSilenceReady && this.transcript.trim()) this.scheduleSilenceFlush();
     };
     recognition.onend = () => {
       if (!this.enabled) return;
-      if (this.browserSilenceReady) {
-        this.browserSilenceReady = false;
-        this.flushTranscript();
-      }
+      if (this.browserSilenceReady && this.transcript.trim()) this.scheduleSilenceFlush();
       try {
         recognition.start();
       } catch {
@@ -222,6 +221,7 @@ export class VoiceSession {
       },
       onSpeechStart: () => {
         this.browserSilenceReady = false;
+        this.clearSilenceTimer();
         this.interrupted =
           interruptPlayback(window.speechSynthesis) || this.interrupted;
         this.speaking = true;
@@ -230,6 +230,7 @@ export class VoiceSession {
       onSpeechEnd: () => {
         this.speaking = false;
         this.browserSilenceReady = true;
+        if (this.transcript.trim()) this.scheduleSilenceFlush();
         if (this.enabled) recognition.stop();
       },
     });

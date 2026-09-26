@@ -71,9 +71,11 @@ export function ConductorComposer({
   const value = pending?.freeformText ?? text;
 
   const send = async (spoken: string, wasInterrupted: boolean) => {
-    if (micActive) {
+    const currentVoice = voice.current;
+    if (currentVoice) {
+      voice.current = null;
       setMicActive(false);
-      await voice.current?.stop(false);
+      await currentVoice.stop(false);
     }
     if (await onSubmit(spoken, wasInterrupted)) {
       setText((current) => (current === spoken ? "" : current));
@@ -83,7 +85,9 @@ export function ConductorComposer({
   const handleMicToggle = async () => {
     if (micActive) {
       setMicActive(false);
-      await voice.current?.stop();
+      const currentVoice = voice.current;
+      voice.current = null;
+      await currentVoice?.stop();
       setVoiceStatus("");
       return;
     }
@@ -105,6 +109,7 @@ export function ConductorComposer({
       await session.start();
     } catch (err) {
       setMicActive(false);
+      if (voice.current === session) voice.current = null;
       await session.stop();
       setVoiceStatus(
         err instanceof Error ? err.message : "Голосовой ввод недоступен.",
