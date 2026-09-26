@@ -38,9 +38,9 @@ public final class NativeVoice {
         tts = new TextToSpeech(activity, status -> {
             if (status != TextToSpeech.SUCCESS || tts == null) return;
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                @Override public void onStart(String utteranceId) {}
-                @Override public void onDone(String utteranceId) { resumeRecognition(utteranceId); }
-                @Override public void onError(String utteranceId) { resumeRecognition(utteranceId); }
+                @Override public void onStart(String utteranceId) { Log.i("VsmVoice", "tts_start"); }
+                @Override public void onDone(String utteranceId) { Log.i("VsmVoice", "tts_done"); resumeRecognition(utteranceId); }
+                @Override public void onError(String utteranceId) { Log.w("VsmVoice", "tts_error"); resumeRecognition(utteranceId); }
             });
             Voice selected = null;
             if (tts.getVoices() == null) return;
@@ -50,7 +50,7 @@ public final class NativeVoice {
             }
             if (selected != null) {
                 ttsReady = tts.setVoice(selected) == TextToSpeech.SUCCESS;
-                if (BuildConfig.DEBUG) Log.i("VsmVoice", "Initial Russian TTS voice=" + selected.getName() + " ready=" + ttsReady);
+                Log.i("VsmVoice", "tts_ready=" + ttsReady + " voice=" + selected.getName());
                 if (ttsReady) activity.runOnUiThread(() -> web.evaluateJavascript(
                     "window.dispatchEvent(new Event('vsm-voice-ready'))", null));
             }
@@ -94,7 +94,7 @@ public final class NativeVoice {
             }
             if (selected != null) {
                 int selectedStatus = tts.setVoice(selected);
-                if (BuildConfig.DEBUG) Log.i("VsmVoice", "TTS gender=" + target + " voice=" + selected.getName() + " selected=" + (selectedStatus == TextToSpeech.SUCCESS));
+                Log.i("VsmVoice", "tts_gender=" + target + " voice=" + selected.getName() + " selected=" + (selectedStatus == TextToSpeech.SUCCESS));
             }
             // A pitch shift cannot turn a male voice into a female one.
             tts.setPitch(1.0f);
@@ -104,7 +104,10 @@ public final class NativeVoice {
                 listening = false;
                 recognizer.cancel();
             }
-            tts.speak(speech, TextToSpeech.QUEUE_FLUSH, null, currentSpeechId);
+            if (tts.speak(speech, TextToSpeech.QUEUE_FLUSH, null, currentSpeechId) != TextToSpeech.SUCCESS) {
+                Log.w("VsmVoice", "tts_queue_error");
+                resumeRecognition(currentSpeechId);
+            }
         });
     }
 
