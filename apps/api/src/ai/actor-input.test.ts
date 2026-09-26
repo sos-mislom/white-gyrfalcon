@@ -153,7 +153,7 @@ it("uses the agent for both intent and actor, without a local model retry", asyn
     }
     const intentBody = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
     const actorBody = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body));
-    expect(intentBody).toMatchObject({ model: "timeweb/gpt-oss-120b", reasoning_effort: "low", max_tokens: 256 });
+    expect(intentBody).toMatchObject({ model: "timeweb/gpt-oss-120b", reasoning_effort: "low", max_tokens: 768 });
     expect(actorBody).toMatchObject({ model: "timeweb/gpt-oss-120b", reasoning_effort: "low", max_tokens: 512 });
   } finally {
     rmSync(directory, { recursive: true, force: true });

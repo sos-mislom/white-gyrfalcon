@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { readFileSync } from "node:fs";
+import { Agent } from "undici";
 import { z } from "zod";
 import {
   actorResponseSchema,
@@ -30,6 +31,14 @@ const completionSchema = z.object({
       }),
     )
     .min(1),
+});
+
+// Failed TCP connects to the gateway otherwise consume Node's ~10s default
+// before the single retry can reach a healthy route.
+const modelDispatcher = new Agent({
+  connect: { timeout: 3000 },
+  keepAliveTimeout: 10000,
+  keepAliveMaxTimeout: 60000,
 });
 
 @Injectable()
@@ -64,7 +73,7 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
       instruction,
       { employee_text: text },
       state.seed,
-      256,
+      768,
       { stage: "intent", timeoutMs: 15000, reasoningEffort: "low" },
     );
     const confidence = result.a === "unknown" ? 0 : Math.max(0.8, result.c);
@@ -179,8 +188,9 @@ ${state.availableActions.map((a) => `- ${a.id}: ${a.label}. Пример: ${scen
         ? readFileSync(process.env.AI_ACTOR_API_KEY_FILE, "utf8").trim()
         : process.env.AI_ACTOR_API_KEY;
       const signal = AbortSignal.timeout(options.timeoutMs ?? 25000);
-      const request: RequestInit = {
+      const request: RequestInit & { dispatcher: Agent } = {
         method: "POST",
+        dispatcher: modelDispatcher,
         headers: {
           "content-type": "application/json",
           ...(apiKey
