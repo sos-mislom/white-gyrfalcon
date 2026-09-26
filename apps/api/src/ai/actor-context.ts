@@ -12,7 +12,8 @@ export interface ActorContextInput {
 export function buildActorContext(state: SessionStateDto, consequence: AllowedConsequenceDto, input: ActorContextInput): string {
   const scenario = getScenario(state.scenarioId);
   if (!scenario) throw new Error("unknown_scenario");
-  const actor = scenario.interactions?.actors.find((item) => item.id === state.currentActorId) ?? scenario.character;
+  const currentActor = scenario.interactions?.actors.find((item) => item.id === state.currentActorId);
+  const actor = currentActor ?? scenario.character;
   const lastAction = state.appliedActions.at(-1)?.actionId ?? "wait";
   const direction = lastAction === "wait" ? scenario.incident.escalation.idle_vector
     : lastAction === "converse" ? scenario.incident.escalation.conversation_vector
@@ -40,13 +41,14 @@ export function buildActorContext(state: SessionStateDto, consequence: AllowedCo
     "Ты пассажир. Не проводник, не рассказчик и не оценщик. Не произноси реплики других персонажей.",
     "",
     "=== СЦЕНА ===",
-    `Ситуация: ${scenario.incident.context_description ?? scenario.title}`,
+    `Твои исходные слова: ${currentActor?.initial_speech ?? scenario.incident.initial_speech ?? scenario.title}`,
     actor?.dialogue_vector ? `Мотив: ${actor.dialogue_vector}` : "",
+    actor?.hidden_biases?.length ? `Личные убеждения: ${actor.hidden_biases.join("; ")}` : "",
     `Место: ${state.currentLocationId}. Прошло минут: ${state.currentTimeMinutes}.`,
     `Выполнено: ${state.completedActionIds.join(", ") || "ничего"}.`,
     `Вектор реакции: ${direction}`,
     `Эмоциональный исход: ${currentEmotionalCheck(state)?.outcome ?? "none"}. Грубость проводника: ${input.markers.rude}.`,
-    `Последствие (факт, не готовая реплика): ${consequence.description}`,
+    `Исход: ${consequence.id}. Твоя текущая реакция (смысл, не готовая реплика): ${state.passengerReply}`,
     "",
     "=== ПАМЯТЬ ДИАЛОГА ===",
     memory,
@@ -57,7 +59,8 @@ export function buildActorContext(state: SessionStateDto, consequence: AllowedCo
     "",
     "=== ОТВЕТ ===",
     "Ответь естественно, одной репликой до 35 слов. Помни сказанное ранее, реагируй на смысл последней фразы.",
-    "Допустим короткий разговор на отвлечённую тему, если он не противоречит мотиву и обстановке.",
+    lastAction === "converse" ? "Сейчас свободный разговор: ответь на вопрос проводника. Свою проблему можешь упомянуть одним коротким замечанием." : "",
+    "Ты не знаешь служебные системы и нормы, пока проводник не рассказал о них. Не говори языком инструкции или от лица перевозчика.",
     "Не повторяй дословно слова проводника и свой прошлый ответ. Не придумывай новые события или полномочия.",
     "Не обещай действий проводника от своего имени. Только JSON: {\"reply\":\"...\"}",
   ].filter(Boolean).join("\n");

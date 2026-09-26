@@ -124,6 +124,7 @@ it("sends heard speech, markers, character and the engine's actual d20 to the ac
   });
   expect(request.messages[0].content).toContain("Сергей");
   expect(request.messages[0].content).toContain(state.checks.at(-1)!.outcome);
+  expect(request.messages[0].content).not.toContain("По Приказу Минтранса");
 });
 
 it("uses the agent for both intent and actor, without a local model retry", async () => {
@@ -190,4 +191,14 @@ it("keeps the passenger role and the named help destination", () => {
   expect(actorIsGrounded(state, { consequenceId: "continue", reply: "Хорошо, обращусь в кассу №3." }, "Обратитесь в кассу №3")).toBe(true);
   expect(actorIsGrounded(state, { consequenceId: "continue", reply: "Вам всё понятно? Благодарю за понимание", }, "Вам всё понятно? Благодарю за понимание")).toBe(false);
   expect(actorReference(state, "Обратитесь в официальный контактный центр")).toContain("Я слушаю");
+});
+it("rejects a passenger who recites the conductor's boarding rule during small talk", () => {
+  let state = createSession({ scenarioId: "boarding_no_ticket", mode: "training", difficulty: 1, seed: 42 });
+  state = applyAction(state, {
+    actionId: "converse", idempotencyKey: crypto.randomUUID(), clientTimestamp: "2026-09-26T00:00:00Z",
+    utterance: "Как настроение?",
+  });
+  const reply = { consequenceId: "continue", reply: "Чувствую себя нормально, однако без действительного билета посадка невозможна." };
+  expect(actorIsGrounded(state, reply, "Как настроение?")).toBe(false);
+  expect(actorDraftCanSurface(state, reply.reply)).toBe(false);
 });

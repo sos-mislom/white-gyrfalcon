@@ -255,6 +255,8 @@ grounding:
   forbidden_reply_patterns:
   - полици|арест|задержан
   forbidden_reply_patterns_by_action:
+    converse:
+    - (?:посадка\s+(?:невозможна|запрещена)|без\s+действительного\s+билета\s+посадка|билет\s+в\s+системе\s+не\s+найден)
     offer_help:
     - (?:поехал|ушел|ушёл|направился|добрался|уже\s+в\s+кассе)
     allow_boarding:

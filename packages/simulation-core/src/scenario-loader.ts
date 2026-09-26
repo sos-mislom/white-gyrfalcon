@@ -34,9 +34,9 @@ export function loadAllScenarios(): ScenarioDefinitionDto[] {
         if (!actions.has(requirement) && !(requirement.startsWith("talk:") && actorIds.has(requirement.slice(5))))
           throw new Error(`Unknown requirement ${requirement} in ${scene.scenario_id}`);
     for (const action of Object.keys(scene.grounding?.required_terms_by_action ?? {}))
-      if (!actions.has(action)) throw new Error(`Unknown grounding action ${action} in ${scene.scenario_id}`);
+      if (!actions.has(action) && !["converse", "wait"].includes(action)) throw new Error(`Unknown grounding action ${action} in ${scene.scenario_id}`);
     for (const action of Object.keys(scene.grounding?.forbidden_reply_patterns_by_action ?? {}))
-      if (!actions.has(action)) throw new Error(`Unknown grounding action ${action} in ${scene.scenario_id}`);
+      if (!actions.has(action) && !["converse", "wait"].includes(action)) throw new Error(`Unknown grounding action ${action} in ${scene.scenario_id}`);
     for (const pattern of [
       ...(scene.grounding?.forbidden_reply_patterns ?? []),
       ...Object.values(scene.grounding?.forbidden_reply_patterns_by_action ?? {}).flat(),
