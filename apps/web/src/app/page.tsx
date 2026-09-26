@@ -1,125 +1,102 @@
-"use client";
-import { useEffect, useRef } from "react";
-import { memoryAwareReply } from "@vsm/simulation-core";
+﻿"use client";
+import { useEffect, useRef, useState } from "react";
+import type { SessionStateDto } from "@vsm/api-contracts";
+import { getFeaturedScenario, getScenario, memoryAwareReply, replaySession } from "@vsm/simulation-core";
 import { useTraining } from "../training/use-training";
-import { FreeformInput } from "../training/freeform-input";
-import {
-  PassengerScene,
-  passengerExpression,
-} from "../training/passenger-scene";
-import { Debriefing } from "../training/debriefing";
+import { listSavedSessions } from "../training/journal-storage";
+import { linkLocalHistory, profileHistory } from "../training/device-profile";
+import { passengerExpression } from "../training/passenger-scene";
 import { useNovelViewport } from "../training/use-novel-viewport";
+import { useGameClock } from "../training/use-game-clock";
+import { stopPassengerReply } from "../training/voice-session";
+import { NarrationBanner, PassengerStage, PassengerDialogueBubble, ConductorComposer, DebriefModal, HomeMenu } from "../vn-ui";
 import "./novel.css";
 
 export default function HomePage() {
   const training = useTraining();
   const { session, busy, ready, error } = training;
   const screen = useNovelViewport();
+  const [paused, setPaused] = useState(false);
+  const [history, setHistory] = useState<SessionStateDto[]>([]);
   const resultTitle = useRef<HTMLHeadingElement>(null);
   const finished = Boolean(session && session.outcome !== "active");
+  const clock = useGameClock(session, paused, busy, () => { void training.act("wait"); });
+
+  useEffect(() => { if (finished) resultTitle.current?.focus(); }, [finished]);
   useEffect(() => {
-    if (finished) resultTitle.current?.focus();
-  }, [finished]);
+    if (!ready || session) return;
+    let current = true;
+    void listSavedSessions().then(async (records) => {
+      if (!current) return;
+      const states = records.flatMap((record) => {
+        try { return [replaySession(record.id, record.journal)]; }
+        catch { return []; }
+      });
+      setHistory(states);
+      if (!navigator.onLine) return;
+      await linkLocalHistory(records).catch(() => undefined);
+      const remote = await profileHistory().catch(() => []);
+      if (current) setHistory([...new Map([...remote, ...states].map((state) => [state.id, state])).values()]);
+    }).catch(() => undefined);
+    return () => { current = false; };
+  }, [ready, session]);
+
+  const scenario = session ? getScenario(session.scenarioId) : undefined;
+  const featured = getFeaturedScenario();
+  const actors = scenario?.character && scenario.interactions?.actors.length
+    ? [scenario.character, ...scenario.interactions.actors]
+    : undefined;
+  const activeActor = actors?.find(actor => actor.id === session?.currentActorId) ?? scenario?.character;
+  const characterName = activeActor?.name ?? "В поезде";
   const feedback = training.record?.lastFreeform;
-  const latest =
-    session?.appliedActions.at(-1)?.key === feedback?.command.idempotencyKey
-      ? feedback
-      : undefined;
-  const reply =
-    latest?.actor.reply ??
-    (session
-      ? (memoryAwareReply(session) ?? session.passengerReply)
-      : "Деньги списались, а билет так и не пришёл. Вы поможете мне разобраться?");
-  const remaining = session
-    ? Math.max(0, 12 - 2 * session.difficulty - session.currentTimeMinutes)
-    : 10;
-  const clock = `${Math.floor(remaining)}:${remaining % 1 ? "30" : "00"}`;
+  const latest = session?.appliedActions.at(-1)?.key === feedback?.command.idempotencyKey ? feedback : undefined;
+  const reply = latest?.actor.reply ?? (session ? memoryAwareReply(session) ?? session.passengerReply : "");
+  const routeText = scenario ? `Белый кречет · ${scenario.location.zone}` : "Белый кречет";
+
   return (
-    <main
-      className="vn-screen"
-      ref={screen}
-      aria-label="Учебная смена проводника"
-    >
-      <h1 className="vn-sr-only">Белый кречет — учебная смена</h1>
-      <PassengerScene
+    <main className={`vn-screen${session ? " vn-scene-screen" : " vn-menu-screen"}`} ref={screen} aria-label="Белый кречет">
+      <h1 className="vn-sr-only">Белый кречет — интерактивная история проводника</h1>
+      <PassengerStage
+        key={session ? `${session.id}:${session.currentLocationId}` : "menu"}
         expression={passengerExpression(session, latest)}
         finished={finished}
+        avatar={activeActor?.portrait_key ?? null}
+        actors={actors}
+        activeActorId={session?.currentActorId}
+        visitedActorIds={[scenario?.character?.id ?? "", ...(session?.appliedActions.filter(action => action.actionId.startsWith("focus:")).map(action => action.actionId.slice(6)) ?? [])]}
+        minute={session?.currentTimeMinutes}
+        onSelectActor={session && !busy && !paused && !finished ? (id) => { stopPassengerReply(); void training.act(`focus:${id}`); } : undefined}
+        background={scenario?.visual.background ?? "departure"}
+        phase={session?.incidents[0]?.phase ?? 0}
       />
-      <header className="vn-header">
-        <span className="vn-route">
-          Белый кречет<span>Москва — Санкт-Петербург</span>
-        </span>
-        {!finished && (
-          <div
-            className="vn-clock"
-            aria-label={`До отправления ${clock}. Учебное время${busy ? ", на паузе" : ""}`}
-          >
-            <span>До отправления</span>
-            <time>{clock}</time>
-            {busy && <small>Время на паузе</small>}
-          </div>
-        )}
-      </header>
-      {finished && session ? (
-        <Debriefing
-          session={session}
-          reply={reply}
-          onRestart={training.start}
-          disabled={busy || Boolean(error)}
-          titleRef={resultTitle}
-        />
-      ) : (
-        <section className="vn-dialogue" aria-labelledby="passenger-name">
-          <h2 className="vn-name" id="passenger-name">
-            Сергей <span>(Пассажир)</span>
-          </h2>
-          <div className="vn-dialogue-content">
-            <div
-              className="vn-speech"
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {training.draftReply && (
-                <small className="vn-draft">
-                  Сергей отвечает · реплика уточняется
-                </small>
-              )}
-              <p>{training.draftReply ?? reply}</p>
-            </div>
-            {session ? (
-              <FreeformInput
-                busy={busy}
-                active={!finished}
-                pending={training.record?.pendingFreeform}
-                error={training.aiError}
-                feedback={latest}
-                onSubmit={training.freeform}
-                disabled={Boolean(error)}
-              />
-            ) : (
-              <div className="vn-intro">
-                <p>
-                  Разберитесь в ситуации и помогите пассажиру, соблюдая правила
-                  посадки.
-                </p>
-                <button
-                  className="vn-primary"
-                  disabled={!ready || busy || Boolean(error)}
-                  onClick={training.start}
-                >
-                  {ready ? "Начать учебную смену" : "Открываем смену…"}
-                </button>
-              </div>
-            )}
-          </div>
+
+      {!session && <HomeMenu ready={ready} busy={busy} history={history} featuredId={featured.scenario_id} onSelect={(id) => { void training.start(id); }} onRandom={() => { void training.start("random"); }} />}
+
+      {session && !finished && <>
+        <NarrationBanner clock={clock} onPause={() => { stopPassengerReply(); setPaused(true); }} />
+        <div className="vn-dialogue-area">
+          <PassengerDialogueBubble name={characterName} text={training.clarification ?? training.draftReply ?? reply} isDraft={Boolean(training.draftReply)} isThinking={busy && !training.draftReply} />
+          <ConductorComposer
+            busy={busy} active pending={training.record?.pendingFreeform} error={training.aiError}
+            reply={training.clarification ?? reply} draftReply={training.draftReply}
+            replyKey={training.clarification ? session.id + ":clarification" : (training.record?.pendingFreeform?.clientTimestamp ?? latest?.command.clientTimestamp ?? session.appliedActions.at(-1)?.clientTimestamp ?? session.id)}
+            onSubmit={training.freeform} disabled={Boolean(error) || paused} muted={paused}
+            voiceGender={activeActor?.voice_profile?.gender ?? "neutral"}
+          />
+        </div>
+      </>}
+
+      {finished && session && <DebriefModal session={session} reply={reply} feedback={latest} characterName={characterName} onRestart={() => training.start(session.scenarioId)} onMenu={() => training.exitToMenu()} disabled={busy || Boolean(error)} titleRef={resultTitle} />}
+
+      {error && <p className="vn-fatal-alert" role="alert">{error}</p>}
+      {paused && session && !finished && <div className="vn-pause-scrim">
+        <section className="vn-pause-panel" role="dialog" aria-modal="true" aria-labelledby="vn-pause-title">
+          <p className="vn-pause-eyebrow">ПАУЗА <span>· {clock} до отправления</span></p>
+          <h2 id="vn-pause-title">{scenario?.title ?? "Смена"}</h2>
+          <p>{routeText}</p>
+          <div className="vn-pause-actions"><button type="button" onClick={() => setPaused(false)}>Продолжить</button><button type="button" disabled={busy} onClick={() => { void training.exitToMenu(); setPaused(false); }}>Выйти в меню</button></div>
         </section>
-      )}
-      {error && (
-        <p className="vn-fatal" role="alert">
-          {error}
-        </p>
-      )}
+      </div>}
     </main>
   );
 }

@@ -1,22 +1,41 @@
 import groovy.json.JsonSlurper
+import java.util.Properties
 plugins { id 'com.android.application' }
 def accessFile = rootProject.file('../../.private/ops/public-access.json')
-if (!accessFile.isFile()) throw new GradleException('Run scripts/prepare-public.py first')
-def standUrl = new JsonSlurper().parse(accessFile).baseUrl
-if (!(standUrl ==~ /https:\/\/[a-zA-Z0-9.-]+/)) throw new GradleException('Expected an HTTPS origin without path')
+def standUrl = project.findProperty("standUrl") ?: (accessFile.isFile() ? new JsonSlurper().parse(accessFile).baseUrl : 'https://vsm-194-87-250-20.sslip.io')
+def signingFile = rootProject.file('../../.private/android/signing.properties')
+def signing = new Properties()
+if (signingFile.isFile()) signingFile.withInputStream { signing.load(it) }
+if (standUrl != "http://127.0.0.1:18040" && !(standUrl ==~ /https:\/\/[a-zA-Z0-9.-]+/)) throw new GradleException('Expected an HTTPS origin without path')
 android {
     namespace 'ru.vsm.trainer'
     compileSdk 36
     buildToolsVersion '35.0.0'
     defaultConfig {
-        applicationId 'ru.vsm.trainer.stand'
+        applicationId 'ru.vsm.trainer'
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName '0.3.0-stand'
+        versionCode 3
+        versionName '0.5.0'
         buildConfigField 'String', 'STAND_URL', '"' + standUrl + '"'
     }
     buildFeatures { buildConfig true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    buildTypes { debug { debuggable true }; release { minifyEnabled false } }
+    signingConfigs {
+        if (signingFile.isFile()) {
+            publicRelease {
+                storeFile rootProject.file('../../.private/android/release.jks')
+                storePassword signing.getProperty('storePassword')
+                keyAlias signing.getProperty('keyAlias')
+                keyPassword signing.getProperty('keyPassword')
+            }
+        }
+    }
+    buildTypes {
+        debug { applicationIdSuffix '.stand'; debuggable true }
+        release {
+            minifyEnabled false
+            if (signingFile.isFile()) signingConfig signingConfigs.publicRelease
+        }
+    }
 }

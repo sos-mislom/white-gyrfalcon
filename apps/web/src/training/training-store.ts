@@ -8,19 +8,22 @@ import {
   applyAction,
   createSession,
   replaySession,
-  standardAnalysis,
-  standardPassengerReply,
+  sceneAnalysis,
+  getScenario,
+  getFeaturedScenario,
   allowedConsequences,
-  BOARDING_SOURCE,
+  SCENE_SOURCE,
 } from "@vsm/simulation-core";
 import {
   acknowledge,
+  clearActive,
   loadActive,
   pendingSessions,
   saveSession,
   type SavedSession,
 } from "./journal-storage";
 import { readFreeformStream, StreamFailure } from "./freeform-stream";
+import { profileHeaders } from "./device-profile";
 
 type SyncStatus = "pending" | "syncing" | "synced" | "conflict";
 export interface TrainingSnapshot {
@@ -30,6 +33,7 @@ export interface TrainingSnapshot {
   busy: boolean;
   error: string | null;
   aiError: string | null;
+  clarification: string | null;
   draftReply: string | null;
   reactionMs: number | null;
   sync: SyncStatus;
@@ -41,6 +45,7 @@ export const EMPTY: TrainingSnapshot = {
   busy: false,
   error: null,
   aiError: null,
+  clarification: null,
   draftReply: null,
   reactionMs: null,
   sync: "pending",
@@ -69,6 +74,11 @@ export class TrainingStore {
     this.abort = new AbortController();
     try {
       const record = await loadActive();
+      if (record && record.journal.engineVersion !== ENGINE_VERSION) {
+        await clearActive();
+        this.publish({ record: null, session: null, ready: true, clarification: "Сцены обновлены. Начните новую ситуацию." });
+        return;
+      }
       this.publish({
         record,
         session: record ? replaySession(record.id, record.journal) : null,
@@ -88,7 +98,21 @@ export class TrainingStore {
     this.abort.abort();
   }
 
-  async start() {
+  async exitToMenu() {
+    if (this.snapshot.busy) return;
+    try {
+      if (this.snapshot.session?.outcome === "active") {
+        await this.act("leave_scene");
+        if (this.snapshot.error || this.snapshot.session?.outcome === "active") return;
+      }
+      await clearActive();
+      this.publish({ session: null, record: null, error: null, aiError: null, clarification: null, draftReply: null });
+    } catch {
+      this.publish({ error: "Не удалось выйти в меню: сохранение недоступно." });
+    }
+  }
+
+  async start(scenarioId = getFeaturedScenario().scenario_id) {
     if (
       this.snapshot.busy ||
       !this.snapshot.ready ||
@@ -99,7 +123,7 @@ export class TrainingStore {
     this.publish({ busy: true });
     try {
       const session = createSession({
-        scenarioId: "boarding_no_ticket",
+        scenarioId,
         mode: "training",
         difficulty: 1,
       });
@@ -111,7 +135,7 @@ export class TrainingStore {
           journal: {
             engineVersion: ENGINE_VERSION,
             setup: {
-              scenarioId: "boarding_no_ticket",
+              scenarioId: session.scenarioId,
               mode: session.mode,
               difficulty: session.difficulty,
               seed: session.seed,
@@ -126,6 +150,7 @@ export class TrainingStore {
         record,
         sync: "pending",
         aiError: null,
+        clarification: null,
         draftReply: null,
         reactionMs: null,
       });
@@ -183,18 +208,24 @@ export class TrainingStore {
       this.snapshot.session?.outcome !== "active"
     )
       return;
-    const standard =
-      !record.pendingFreeform &&
-      this.snapshot.session?.engineVersion === "boarding-4"
-        ? standardAnalysis(text, this.snapshot.session.completedActionIds)
-        : undefined;
-    if (standard) {
-      this.publish({ busy: true, aiError: null, draftReply: null });
+    const scene = this.snapshot.session ? getScenario(this.snapshot.session.scenarioId) : undefined;
+    const standard = !record.pendingFreeform && scene ? sceneAnalysis(text, scene) : undefined;
+    if (standard && !navigator.onLine) {
+      this.publish({
+        busy: true,
+        aiError: null,
+        clarification: null,
+        draftReply: null,
+      });
       try {
+        const fallbackReply = "Я вас услышал. Что будем делать дальше?";
         const command = {
           idempotencyKey: crypto.randomUUID(),
           actionId: standard.matchedActionId,
           clientTimestamp: new Date().toISOString(),
+          utterance: text.trim(),
+          ...(this.snapshot.session?.currentActorId ? { actorId: this.snapshot.session.currentActorId } : {}),
+          actorReply: fallbackReply,
           communication: {
             polite: standard.markers.polite,
             empathy: standard.markers.empathy,
@@ -211,12 +242,12 @@ export class TrainingStore {
           allowedConsequences: outcomes,
           actor: {
             consequenceId: outcomes[0]!.id,
-            reply: standardPassengerReply(next, text)!,
+            reply: fallbackReply,
           },
-          actorFallback: false,
-          source: BOARDING_SOURCE,
+          actorFallback: true,
+          source: scene?.incident.sop_reference ?? SCENE_SOURCE,
           execution: "local",
-          responseMode: "pool",
+          responseMode: "fallback",
         });
         record = await saveSession(
           {
@@ -255,6 +286,7 @@ export class TrainingStore {
     this.publish({
       busy: true,
       aiError: null,
+      clarification: null,
       draftReply: null,
       reactionMs: null,
     });
@@ -278,24 +310,29 @@ export class TrainingStore {
       // The API must see the exact preceding journal before interpreting this answer.
       const syncResponse = await fetch(`${api}/sessions/${record.id}/sync`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...profileHeaders() },
         body: JSON.stringify(record.journal),
         signal: AbortSignal.timeout(10000),
       });
       if (!syncResponse.ok) throw new Error("sync_unavailable");
-      const response = await fetch(
-        `${api}/sessions/${record.id}/action-freeform/stream`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "if-match": String(record.journal.commands.length),
-          },
-          body: JSON.stringify(record.pendingFreeform),
-          signal: AbortSignal.timeout(100000),
+      const request = {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "if-match": String(record.journal.commands.length),
         },
-      );
-      if ([422, 503].includes(response.status)) {
+        body: JSON.stringify(record.pendingFreeform),
+      };
+      let response: Response | undefined;
+      try {
+        response = await fetch(`${api}/sessions/${record.id}/action-freeform/stream`, {
+          ...request,
+          signal: AbortSignal.timeout(100000),
+        });
+      } catch {
+        // The server may still have committed; the receipt request below is safe.
+      }
+      if (response && [422, 503].includes(response.status)) {
         record = await saveSession(
           { ...record, pendingFreeform: undefined },
           record.revision,
@@ -304,17 +341,37 @@ export class TrainingStore {
           record,
           aiError:
             response.status === 422
-              ? "AI не уверен в намерении. Уточните фразу или выберите действие кнопкой. Ход не применён."
-              : "AI недоступен. Выберите явное действие — ход и баллы не изменены.",
+              ? null
+              : "Сейчас не могу ответить. Попробуйте ещё раз.",
+          clarification:
+            response.status === 422
+              ? "Простите, я не понял. Повторите, пожалуйста?"
+              : null,
         });
         return;
       }
-      if (!response.ok) throw new Error("freeform_unconfirmed");
-      const result = freeformActionResultSchema.parse(
-        await readFreeformStream(response, (draftReply) =>
-          this.publish({ draftReply }),
-        ),
-      );
+      let result;
+      try {
+        if (!response) throw new Error("freeform_stream_disconnected");
+        if (!response.ok) throw new Error(`freeform_http_${response.status}`);
+        result = freeformActionResultSchema.parse(
+          await readFreeformStream(response, (draftReply) =>
+            this.publish({ draftReply }),
+          ),
+        );
+      } catch (streamError) {
+        if (streamError instanceof StreamFailure && [422, 503].includes(streamError.status))
+          throw streamError;
+        // The stream may end after the server commits. The same request returns
+        // its durable receipt, so this does not generate or apply a second turn.
+        const receipt = await fetch(`${api}/sessions/${record.id}/action-freeform`, {
+          ...request,
+          signal: AbortSignal.timeout(100000),
+        });
+        if ([422, 503].includes(receipt.status)) throw new StreamFailure(receipt.status);
+        if (!receipt.ok) throw new Error(`freeform_receipt_${receipt.status}`);
+        result = freeformActionResultSchema.parse(await receipt.json());
+      }
       const journal = {
         ...record.journal,
         commands: [...record.journal.commands, result.command],
@@ -352,15 +409,19 @@ export class TrainingStore {
           record,
           aiError:
             error.status === 422
-              ? "AI не уверен. Уточните фразу или выберите действие кнопкой. Ход не применён."
-              : "AI недоступен. Выберите явное действие — ход и баллы не изменены.",
+              ? null
+              : "Сейчас не могу ответить. Попробуйте ещё раз.",
+          clarification:
+            error.status === 422
+              ? "Простите, я не понял. Повторите, пожалуйста?"
+              : null,
           draftReply: null,
         });
         return;
       }
       this.publish({
-        aiError:
-          "Ответ не подтверждён. Текст сохранён. Повторите отправку — ход не применится дважды. Не начинайте другую попытку до сверки.",
+        aiError: "Связь прервалась. Нажмите отправить ещё раз.",
+        draftReply: null,
       });
     } finally {
       this.publish({ busy: false, draftReply: null });
@@ -397,7 +458,7 @@ export class TrainingStore {
             `${process.env.NEXT_PUBLIC_API_URL ?? "/api"}/sessions/${record.id}/sync`,
             {
               method: "POST",
-              headers: { "content-type": "application/json" },
+              headers: { "content-type": "application/json", ...profileHeaders() },
               body: JSON.stringify(record.journal),
               signal: AbortSignal.any([
                 this.abort.signal,

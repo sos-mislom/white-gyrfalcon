@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ENGINE_VERSION,
   sessionStateSchema,
   syncSessionSchema,
   submitFreeformActionSchema,
@@ -22,10 +23,10 @@ export type SavedSession = z.infer<typeof savedSessionSchema>;
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("vsm-training", 1);
+    const request = indexedDB.open("vsm-training", 2);
     request.onupgradeneeded = () => {
-      request.result.createObjectStore("sessions", { keyPath: "id" });
-      request.result.createObjectStore("meta");
+      if (!request.result.objectStoreNames.contains("sessions")) request.result.createObjectStore("sessions", { keyPath: "id" });
+      if (!request.result.objectStoreNames.contains("meta")) request.result.createObjectStore("meta");
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -75,7 +76,7 @@ async function transaction<T>(
 }
 
 export async function loadActive(): Promise<SavedSession | null> {
-  return transaction("readonly", (tx, result, fail) => {
+  return transaction("readwrite", (tx, result, fail) => {
     const pointer = tx.objectStore("meta").get("active");
     pointer.onsuccess = () => {
       if (!pointer.result) {
@@ -84,6 +85,11 @@ export async function loadActive(): Promise<SavedSession | null> {
       }
       const request = tx.objectStore("sessions").get(pointer.result);
       request.onsuccess = () => {
+        if (request.result?.journal?.engineVersion !== ENGINE_VERSION) {
+          tx.objectStore("meta").delete("active");
+          result(null);
+          return;
+        }
         const parsed = savedSessionSchema.safeParse(request.result);
         if (!parsed.success) {
           fail(new Error("stored_journal_invalid"));
@@ -95,21 +101,48 @@ export async function loadActive(): Promise<SavedSession | null> {
   });
 }
 
+export async function clearActive(): Promise<void> {
+  return transaction("readwrite", (tx, result) => {
+    tx.objectStore("meta").delete("active");
+    result(undefined);
+  });
+}
+
 export async function pendingSessions(): Promise<SavedSession[]> {
   return transaction("readonly", (tx, result, fail) => {
     const request = tx.objectStore("sessions").getAll();
     request.onsuccess = () => {
-      const parsed = z.array(savedSessionSchema).safeParse(request.result);
+      const current = (request.result as unknown[]).filter((item): item is { journal: { engineVersion: string } } =>
+        typeof item === "object" && item !== null && "journal" in item &&
+        typeof item.journal === "object" && item.journal !== null &&
+        "engineVersion" in item.journal && item.journal.engineVersion === ENGINE_VERSION);
+      const parsed = z.array(savedSessionSchema).safeParse(current);
       if (!parsed.success) {
         fail(new Error("stored_journal_invalid"));
         return;
       }
       result(
         parsed.data.filter(
-          (item) => item.syncedCount < item.journal.commands.length,
+          (item) => item.journal.engineVersion === ENGINE_VERSION &&
+            item.syncedCount < item.journal.commands.length,
         ),
       );
     };
+  });
+}
+
+export async function listSavedSessions(): Promise<SavedSession[]> {
+  return transaction("readonly", (tx, result, fail) => {
+    const request = tx.objectStore("sessions").getAll();
+    request.onsuccess = () => {
+      const valid = (request.result as unknown[])
+        .map((item) => savedSessionSchema.safeParse(item))
+        .filter((item): item is { success: true; data: SavedSession } => item.success)
+        .map((item) => item.data)
+        .filter((item) => item.journal.engineVersion === ENGINE_VERSION);
+      result(valid);
+    };
+    request.onerror = () => fail(request.error ?? new Error("history_unavailable"));
   });
 }
 

@@ -41,7 +41,6 @@ export function VoiceInput({
         className="vn-microphone"
         aria-label={enabled ? "Выключить микрофон" : "Включить микрофон"}
         aria-pressed={enabled}
-        aria-describedby="voice-privacy"
         onClick={async () => {
           if (enabled) {
             setEnabled(false);

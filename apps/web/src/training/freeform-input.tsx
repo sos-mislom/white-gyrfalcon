@@ -92,10 +92,6 @@ export function FreeformInput({
           )}
         </div>
       )}
-      <p className="vn-privacy" id="voice-privacy">
-        Голос распознаёт браузер, в том числе онлайн. Не сообщайте личные
-        данные.
-      </p>
       {feedback?.analysis && (
         <details className="vn-analysis">
           <summary>

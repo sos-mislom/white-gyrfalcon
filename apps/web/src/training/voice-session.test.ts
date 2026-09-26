@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { interruptPlayback, VoiceSession } from "./voice-session";
+import { interruptPlayback, VoiceSession, queuePassengerSpeech, stopPassengerReply } from "./voice-session";
 import { MicVAD } from "@ricky0123/vad-web";
 vi.mock("@ricky0123/vad-web", () => ({ MicVAD: { new: vi.fn() } }));
 it("barge-in stops playback synchronously and only flags an actual interruption", () => {
@@ -19,4 +19,105 @@ it("releases ONNX once when disabling voice is followed by unmount", async () =>
     await voice.stop();
     expect(destroy).toHaveBeenCalledTimes(1);
   } finally { vi.unstubAllGlobals(); }
+});
+it("queues speech from a streaming reply once and never replays its first sentence", () => {
+  const speak = vi.fn();
+  vi.stubGlobal("window", {
+    VsmVoice: { canSpeak: () => true, speak, stopSpeech: vi.fn() },
+    speechSynthesis: { cancel: vi.fn() },
+  });
+  try {
+    queuePassengerSpeech("Спасибо за", "turn-1", false);
+    expect(speak).not.toHaveBeenCalled();
+    queuePassengerSpeech("Спасибо за помощь. Я успею?", "turn-1", false);
+    expect(speak).toHaveBeenCalledWith("Спасибо за помощь.");
+    queuePassengerSpeech("Спасибо за помощь. Я успею?", "turn-1", true);
+    expect(speak).toHaveBeenLastCalledWith("Спасибо за помощь.");
+    expect(speak).toHaveBeenCalledTimes(1);
+  } finally { stopPassengerReply(); vi.unstubAllGlobals(); }
+});
+it("passes the scene's voice gender to Android for the first sentence only", () => {
+  const speakVoice = vi.fn();
+  vi.stubGlobal("window", {
+    VsmVoice: { canSpeak: () => true, speakVoice, stopSpeech: vi.fn() },
+    speechSynthesis: { cancel: vi.fn() },
+  });
+  try {
+    queuePassengerSpeech("Помогите. Я тороплюсь.", "female-turn", true, "female");
+    expect(speakVoice).toHaveBeenCalledWith("Помогите.", "female");
+    expect(speakVoice).toHaveBeenCalledTimes(1);
+  } finally { stopPassengerReply(); vi.unstubAllGlobals(); }
+});
+it("selects a known female Russian voice even when the male voice is listed first", () => {
+  const female = { name: "ru-ru-x-ruc-local", lang: "ru-RU" };
+  const male = { name: "ru-ru-x-ruf-local", lang: "ru-RU" };
+  const speak = vi.fn();
+  class Utterance {
+    lang = "";
+    voice?: typeof female;
+    pitch = 1;
+    constructor(readonly text: string) {}
+  }
+  vi.stubGlobal("SpeechSynthesisUtterance", Utterance);
+  vi.stubGlobal("window", {
+    SpeechSynthesisUtterance: Utterance,
+    speechSynthesis: { getVoices: () => [male, female], speak, cancel: vi.fn() },
+  });
+  try {
+    queuePassengerSpeech("Покажите билет.", "female-browser-turn", true, "female");
+    expect(speak).toHaveBeenCalledTimes(1);
+    expect(speak.mock.calls[0]![0].voice).toBe(female);
+  } finally { stopPassengerReply(); vi.unstubAllGlobals(); }
+});
+it("waits for Android TTS instead of speaking with the browser's default voice", () => {
+  let ready = false;
+  const speakVoice = vi.fn();
+  const browserSpeak = vi.fn();
+  vi.stubGlobal("window", {
+    VsmVoice: { canSpeak: () => ready, speakVoice, stopSpeech: vi.fn() },
+    speechSynthesis: { getVoices: () => [], speak: browserSpeak, cancel: vi.fn() },
+    SpeechSynthesisUtterance: class {},
+  });
+  try {
+    queuePassengerSpeech("Помогите мне.", "android-ready-turn", true, "female");
+    expect(browserSpeak).not.toHaveBeenCalled();
+    expect(speakVoice).not.toHaveBeenCalled();
+    ready = true;
+    queuePassengerSpeech("Помогите мне.", "android-ready-turn", true, "female");
+    expect(speakVoice).toHaveBeenCalledWith("Помогите мне.", "female");
+  } finally { stopPassengerReply(); vi.unstubAllGlobals(); }
+});
+it("combines speech across short pauses and sends after two seconds of silence", async () => {
+  vi.useFakeTimers();
+  const sent = vi.fn();
+  const partial = vi.fn();
+  const native = {
+    canRecognize: () => true,
+    startListening: vi.fn(),
+    stopListening: vi.fn(),
+    stopSpeech: vi.fn(),
+  };
+  const browser = { VsmVoice: native, speechSynthesis: { cancel: vi.fn() }, setTimeout } as unknown as Window & {
+    __vsmNativeSpeech?: (text: string, done: boolean, error: string) => void;
+  };
+  vi.stubGlobal("window", browser);
+  const voice = new VoiceSession(sent, () => {}, partial);
+  try {
+    await voice.start();
+    browser.__vsmNativeSpeech?.("Покажите билет.", true, "");
+    await vi.advanceTimersByTimeAsync(1000);
+    browser.__vsmNativeSpeech?.("", false, "speech_started");
+    await vi.advanceTimersByTimeAsync(1300);
+    expect(sent).not.toHaveBeenCalled();
+    browser.__vsmNativeSpeech?.("Я уточню место.", true, "");
+    expect(partial).toHaveBeenLastCalledWith("Покажите билет. Я уточню место.");
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(sent).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(sent).toHaveBeenCalledExactlyOnceWith("Покажите билет. Я уточню место.", false);
+  } finally {
+    await voice.stop();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
 });

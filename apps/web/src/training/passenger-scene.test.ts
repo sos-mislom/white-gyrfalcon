@@ -18,4 +18,12 @@ it("selects stress, refusal, failure and resolution portraits from engine state"
   expect(passengerExpression({ ...state, outcome: "resolved" })).toBe(
     "grateful",
   );
+  expect(passengerExpression(null)).toBe("neutral");
+  const thoughtful = applyAction(state, {
+    actionId: "explain_rules",
+    idempotencyKey: crypto.randomUUID(),
+    clientTimestamp: "2026-09-26T00:00:00Z",
+    communication: { polite: true, empathy: true, rude: false },
+  });
+  expect(passengerExpression(thoughtful)).toBe("thoughtful");
 });

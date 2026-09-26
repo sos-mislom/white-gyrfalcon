@@ -39,6 +39,53 @@ beforeEach(async () => {
 });
 
 describe("durable local journal", () => {
+  it("preserves legacy history while clearing its active pointer", async () => {
+    const legacy = { ...record(), journal: { ...record().journal, engineVersion: "boarding-4" }, lastFreeform: { oldShape: true } };
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("vsm-training", 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore("sessions", { keyPath: "id" });
+        request.result.createObjectStore("meta");
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = db.transaction(["sessions", "meta"], "readwrite");
+    tx.objectStore("sessions").put(legacy);
+    tx.objectStore("meta").put(legacy.id, "active");
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    expect(await loadActive()).toBeNull();
+    expect(await pendingSessions()).toEqual([]);
+    const upgraded = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("vsm-training", 2);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const read = upgraded.transaction(["sessions", "meta"], "readonly");
+    const history = read.objectStore("sessions").get(legacy.id);
+    const active = read.objectStore("meta").get("active");
+    await new Promise<void>((resolve, reject) => {
+      read.oncomplete = () => resolve();
+      read.onerror = () => reject(read.error);
+    });
+    expect(history.result).toEqual(legacy);
+    expect(active.result).toBeUndefined();
+    upgraded.close();
+  });
+  it("repairs an incomplete legacy database without deleting saved data", async () => {
+    const empty = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("vsm-training", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    empty.close();
+    expect(await loadActive()).toBeNull();
+    expect(await saveSession(record(), null)).toBeDefined();
+  });
   it("restores a saved turn after reopening storage", async () => {
     expect(await loadActive()).toBeNull();
     const first = await saveSession(record(), null);

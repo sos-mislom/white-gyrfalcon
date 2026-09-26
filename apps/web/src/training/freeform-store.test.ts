@@ -3,7 +3,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyAction,
   allowedConsequences,
-  BOARDING_SOURCE,
+  SCENE_SOURCE,
   replaySession,
 } from "@vsm/simulation-core";
 import { TrainingStore } from "./training-store";
@@ -64,7 +64,7 @@ describe("freeform client journal", () => {
           reply: "Вот мой заказ.",
         },
         actorFallback: false,
-        source: BOARDING_SOURCE,
+        source: SCENE_SOURCE,
         execution: "server",
       }),
     );
@@ -89,7 +89,7 @@ describe("freeform client journal", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     const saved = (await loadActive())!;
     expect(saved.lastFreeform?.execution).toBe("local");
-    expect(saved.lastFreeform?.responseMode).toBe("pool");
+    expect(saved.lastFreeform?.responseMode).toBe("fallback");
     expect(store.getSnapshot().session?.outcome).toBe("resolved");
     expect(replaySession(saved.id, saved.journal)).toEqual(
       store.getSnapshot().session,
@@ -132,7 +132,7 @@ describe("freeform client journal", () => {
           reply: "Вот мой заказ, посмотрите.",
         },
         actorFallback: false,
-        source: BOARDING_SOURCE,
+        source: SCENE_SOURCE,
         execution: "server",
       });
     });
@@ -144,6 +144,43 @@ describe("freeform client journal", () => {
     expect(replaySession(saved.id, saved.journal)).toEqual(
       store.getSnapshot().session,
     );
+    store.dispose();
+  });
+
+  it("recovers a committed turn when its SSE confirmation is truncated", async () => {
+    const store = new TrainingStore();
+    await store.initialize();
+    await store.start();
+    vi.stubGlobal("navigator", { onLine: true });
+    let receiptCalls = 0;
+    vi.stubGlobal("fetch", async (url: string, options: RequestInit) => {
+      const current = store.getSnapshot();
+      if (url.endsWith("/sync"))
+        return Response.json(replaySession(current.session!.id, JSON.parse(options.body as string)));
+      if (url.endsWith("/stream"))
+        return new Response('data: {"type":"status","stage":"analyzing"}\n\n', {
+          headers: { "content-type": "text/event-stream" },
+        });
+      receiptCalls++;
+      const input = JSON.parse(options.body as string);
+      const command = {
+        idempotencyKey: crypto.randomUUID(),
+        actionId: "ask_for_ticket",
+        clientTimestamp: input.clientTimestamp,
+      };
+      const session = applyAction(current.session!, command);
+      return Response.json({
+        session, command, analysis: null,
+        allowedConsequences: allowedConsequences(session),
+        actor: { consequenceId: "respond_to_current_step", reply: "Покажу билет." },
+        actorFallback: false, source: SCENE_SOURCE, execution: "server",
+      });
+    });
+    await store.freeform("Покажите, пожалуйста, ваш билет.");
+    expect(receiptCalls).toBe(1);
+    expect(store.getSnapshot().record?.pendingFreeform).toBeUndefined();
+    expect(store.getSnapshot().session?.appliedActions).toHaveLength(1);
+    expect(store.getSnapshot().aiError).toBeNull();
     store.dispose();
   });
 

@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "node ../../scripts/prepare-ai-runtime.mjs",
-    "predev": "node ../../scripts/prepare-ai-runtime.mjs",
-    "build": "next build && node ../../scripts/build-offline.mjs",
+    "prebuild": "node tools/prepare-ai-runtime.mjs",
+    "predev": "node tools/prepare-ai-runtime.mjs",
+    "build": "next build && node tools/build-offline.mjs",
     "dev": "next dev --hostname 0.0.0.0",
     "lint": "node ../../node_modules/eslint/bin/eslint.js .",
     "start": "next start --hostname 0.0.0.0",

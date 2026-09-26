@@ -4,6 +4,7 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   transpilePackages: ["@vsm/api-contracts", "@vsm/simulation-core"],
   output: "standalone",
+  allowedDevOrigins: ["127.0.0.1"],
   outputFileTracingRoot: path.join(__dirname, "../../"),
   experimental: { cpus: 1 },
   async headers() {
