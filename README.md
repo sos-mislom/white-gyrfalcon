@@ -37,7 +37,7 @@ Android APK — подписанная WebView-оболочка этого кл�
 
 ## Локальный запуск
 
-Нужны Node.js 24.15+ и npm 11+. После `npm install` выполните:
+Нужны Node.js 24.15+ и npm 11+. Установите зависимости командой `npm ci --ignore-scripts`, затем выполните:
 
 ```bash
 npm run dev
