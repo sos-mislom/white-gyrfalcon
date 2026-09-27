@@ -171,26 +171,33 @@ public final class NativeVoice {
         if (recognizer == null) {
             recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(activity);
             recognizer.setRecognitionListener(new RecognitionListener() {
-                @Override public void onReadyForSpeech(Bundle params) {}
+                @Override public void onReadyForSpeech(Bundle params) {
+                    Log.i("VsmVoice", "asr_ready");
+                    emit("", false, "recognition_ready");
+                }
                 @Override public void onBeginningOfSpeech() {
+                    Log.i("VsmVoice", "asr_speech_started");
                     if (tts != null) tts.stop();
                     emit("", false, "speech_started");
                 }
                 @Override public void onRmsChanged(float rmsdB) {}
                 @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() {}
+                @Override public void onEndOfSpeech() { Log.i("VsmVoice", "asr_speech_ended"); }
                 @Override public void onError(int error) {
+                    Log.i("VsmVoice", "asr_error=" + error);
                     listening = false;
                     if (speaking || !listeningRequested) return;
                     emit("", true, "recognition_error_" + error);
                 }
                 @Override public void onResults(Bundle results) {
+                    Log.i("VsmVoice", "asr_final_chars=" + best(results).length());
                     listening = false;
                     if (speaking || !listeningRequested) return;
                     emit(best(results), true, "");
                 }
                 @Override public void onPartialResults(Bundle results) {
                     if (speaking || !listeningRequested) return;
+                    Log.d("VsmVoice", "asr_partial_chars=" + best(results).length());
                     emit(best(results), false, "");
                 }
                 @Override public void onEvent(int eventType, Bundle params) {}
@@ -200,6 +207,13 @@ public final class NativeVoice {
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU");
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        intent.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
+        if (Build.VERSION.SDK_INT >= 33) {
+            intent.putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY);
+            intent.putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS,
+                new ArrayList<>(java.util.Arrays.asList("проводник", "вагон", "билет", "место", "поезд",
+                    "РЖД", "Москва", "Санкт-Петербург", "ВСМ")));
+        }
         recognizer.startListening(intent);
     }
 

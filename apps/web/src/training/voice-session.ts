@@ -100,6 +100,9 @@ export class VoiceSession {
   private speaking = false;
   private interrupted = false;
   private transcript = "";
+  private nativePartial = "";
+  private nativeLongestPartial = "";
+  private browserInterim = "";
   private silenceTimer?: ReturnType<typeof setTimeout>;
   private browserSilenceReady = false;
   private stream?: MediaStream;
@@ -121,6 +124,10 @@ export class VoiceSession {
       this.enabled = true;
       browser.__vsmNativeSpeech = (text, done, error) => {
         if (!this.enabled) return;
+        if (error === "recognition_ready") {
+          this.onStatus("Говорите…");
+          return;
+        }
         if (error === "speech_started") {
           this.clearSilenceTimer();
           return;
@@ -131,15 +138,34 @@ export class VoiceSession {
             void this.stop();
             return;
           }
+          this.commitNativePartial();
           if (this.transcript) this.scheduleSilenceFlush();
           else if (error !== "recognition_error_7") this.onStatus("Речь не распознана. Скажите фразу ещё раз.");
         } else if (!done) {
-          if (text.trim()) this.clearSilenceTimer();
-          this.onPartial?.(`${this.transcript} ${text}`.trim().slice(0, 500));
-        } else if (text.trim()) {
-          this.transcript = `${this.transcript} ${text.trim()}`.trim().slice(0, 500);
-          this.onPartial?.(this.transcript);
-          this.scheduleSilenceFlush();
+          const partial = text.trim();
+          if (partial) {
+            this.clearSilenceTimer();
+            this.nativePartial = partial;
+            if (partial.length > this.nativeLongestPartial.length) this.nativeLongestPartial = partial;
+            this.onPartial?.(`${this.transcript} ${partial}`.trim().slice(0, 500));
+          }
+        } else {
+          const final = text.trim();
+          const longest = this.nativeLongestPartial;
+          // Some Android engines return just the tail as a final hypothesis.
+          // Retain the earlier words only when the final is a clear suffix.
+          const comparable = (value: string) => value.toLocaleLowerCase("ru-RU").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+          const earlier = comparable(longest);
+          const ending = comparable(final);
+          const chosen = earlier && ending && earlier !== ending && earlier.endsWith(` ${ending}`)
+            ? longest : final || this.nativePartial || longest;
+          this.nativePartial = "";
+          this.nativeLongestPartial = "";
+          if (chosen) {
+            this.transcript = `${this.transcript} ${chosen}`.trim().slice(0, 500);
+            this.onPartial?.(this.transcript);
+            this.scheduleSilenceFlush();
+          }
         }
         if (done && this.enabled)
           window.setTimeout(() => {
@@ -147,7 +173,7 @@ export class VoiceSession {
           }, error === "recognition_error_8" ? 700 : 300);
       };
       this.native.startListening();
-      this.onStatus("Слушаю. Слова появятся в поле ответа.");
+      this.onStatus("Подключаю микрофон…");
       return;
     }
     const Constructor =
@@ -172,11 +198,16 @@ export class VoiceSession {
         if (result.isFinal) this.transcript += ` ${result[0].transcript}`;
         else interim += ` ${result[0].transcript}`;
       }
+      this.browserInterim = interim.trim();
       this.onPartial?.(`${this.transcript} ${interim}`.trim().slice(0, 500));
       if (this.browserSilenceReady && this.transcript.trim()) this.scheduleSilenceFlush();
     };
     recognition.onend = () => {
       if (!this.enabled) return;
+      if (this.browserSilenceReady && this.browserInterim) {
+        this.transcript = `${this.transcript} ${this.browserInterim}`.trim().slice(0, 500);
+        this.browserInterim = "";
+      }
       if (this.browserSilenceReady && this.transcript.trim()) this.scheduleSilenceFlush();
       try {
         recognition.start();
@@ -249,6 +280,15 @@ export class VoiceSession {
   private clearSilenceTimer() {
     if (this.silenceTimer) clearTimeout(this.silenceTimer);
     this.silenceTimer = undefined;
+  }
+
+  private commitNativePartial() {
+    const partial = this.nativeLongestPartial || this.nativePartial;
+    this.nativePartial = "";
+    this.nativeLongestPartial = "";
+    if (!partial) return;
+    this.transcript = `${this.transcript} ${partial}`.trim().slice(0, 500);
+    this.onPartial?.(this.transcript);
   }
 
   private scheduleSilenceFlush() {

@@ -121,6 +121,43 @@ it("combines speech across short pauses and sends after two seconds of silence",
     vi.unstubAllGlobals();
   }
 });
+it("keeps the beginning when Android only finalizes the tail or reports no match", async () => {
+  vi.useFakeTimers();
+  const sent = vi.fn();
+  const partial = vi.fn();
+  const status = vi.fn();
+  const native = {
+    canRecognize: () => true,
+    startListening: vi.fn(),
+    stopListening: vi.fn(),
+    stopSpeech: vi.fn(),
+  };
+  const browser = { VsmVoice: native, speechSynthesis: { cancel: vi.fn() }, setTimeout } as unknown as Window & {
+    __vsmNativeSpeech?: (text: string, done: boolean, error: string) => void;
+  };
+  vi.stubGlobal("window", browser);
+  const voice = new VoiceSession(sent, status, partial);
+  try {
+    await voice.start();
+    expect(status).toHaveBeenLastCalledWith("Подключаю микрофон…");
+    browser.__vsmNativeSpeech?.("", false, "recognition_ready");
+    expect(status).toHaveBeenLastCalledWith("Говорите…");
+    browser.__vsmNativeSpeech?.("Я хотел бы показать билет", false, "");
+    browser.__vsmNativeSpeech?.("показать билет", true, "");
+    expect(partial).toHaveBeenLastCalledWith("Я хотел бы показать билет");
+    await vi.advanceTimersByTimeAsync(500);
+    browser.__vsmNativeSpeech?.("у меня место в третьем вагоне", false, "");
+    browser.__vsmNativeSpeech?.("вагоне", false, "");
+    browser.__vsmNativeSpeech?.("", true, "recognition_error_7");
+    expect(partial).toHaveBeenLastCalledWith("Я хотел бы показать билет у меня место в третьем вагоне");
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(sent).toHaveBeenCalledExactlyOnceWith("Я хотел бы показать билет у меня место в третьем вагоне", false);
+  } finally {
+    await voice.stop();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
 it("keeps browser dictation open through a short pause between sentences", async () => {
   vi.useFakeTimers();
   const sent = vi.fn();
@@ -154,6 +191,42 @@ it("keeps browser dictation open through a short pause between sentences", async
     vadOptions!.onSpeechEnd();
     await vi.advanceTimersByTimeAsync(2000);
     expect(sent).toHaveBeenCalledExactlyOnceWith("Покажите билет. Я уточню место.", false);
+  } finally {
+    await voice.stop();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
+it("retains browser interim text when recognition ends without a final result", async () => {
+  vi.useFakeTimers();
+  const sent = vi.fn();
+  let speechStart: (() => void) | undefined;
+  let speechEnd: (() => void) | undefined;
+  vi.mocked(MicVAD.new).mockImplementation(async (options) => {
+    speechStart = options.onSpeechStart;
+    speechEnd = options.onSpeechEnd;
+    return { start: async () => {}, destroy: async () => {} } as unknown as MicVAD;
+  });
+  class Recognition {
+    onresult?: (event: unknown) => void;
+    onend?: () => void;
+    start() {}
+    stop() { this.onend?.(); }
+    abort() {}
+  }
+  const recognition = new Recognition();
+  vi.stubGlobal("window", {
+    SpeechRecognition: class { constructor() { return recognition; } },
+    speechSynthesis: { speaking: false, cancel: vi.fn() },
+  });
+  const voice = new VoiceSession(sent, () => {});
+  try {
+    await voice.start();
+    speechStart?.();
+    recognition.onresult?.({ resultIndex: 0, results: [{ isFinal: false, 0: { transcript: "Проверьте мой билет" } }] });
+    speechEnd?.();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(sent).toHaveBeenCalledExactlyOnceWith("Проверьте мой билет", false);
   } finally {
     await voice.stop();
     vi.useRealTimers();
