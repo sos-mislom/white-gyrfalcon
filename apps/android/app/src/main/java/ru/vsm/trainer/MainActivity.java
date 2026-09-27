@@ -110,5 +110,13 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         nativeVoice.onPermissionResult(requestCode, grantResults);
     }
+    @Override protected void onPause() {
+        nativeVoice.pause();
+        super.onPause();
+    }
+    @Override protected void onResume() {
+        super.onResume();
+        if (web != null) web.evaluateJavascript("window.dispatchEvent(new Event('vsm-voice-interrupted'))", null);
+    }
     @Override protected void onDestroy() { nativeVoice.destroy(); web.destroy(); super.onDestroy(); }
 }

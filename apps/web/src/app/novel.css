@@ -71,6 +71,7 @@
 .vn-btn-mic, .vn-btn-send { width: 2.75rem; height: 2.75rem; display: grid; place-items: center; border-radius: 50%; transition: transform .2s ease, background .2s ease; }
 .vn-btn-mic { border: 1px solid rgba(255,255,255,.42); background: rgba(255,255,255,.09); color: #f7f4ee; }
 .vn-btn-mic.is-listening { color: #fff; background: #b2455e; border-color: #ffc6d1; box-shadow: 0 0 0 4px rgba(234,101,124,.19); animation: vn-listen-pulse 1.3s ease-in-out infinite; }
+.vn-btn-mic.is-conversation:not(.is-listening) { color: #fff; background: #a6192e; border-color: #a6192e; }
 .vn-btn-send { border: 0; background: linear-gradient(135deg,#e7c997,#c69a61); color: #172338; font-size: 1.1rem; }
 .vn-btn-mic:hover:not(:disabled), .vn-btn-send:hover:not(:disabled) { transform: translateY(-2px); }
 .vn-composer-status { margin: 0; min-height: 1rem; color: #e8ddd1; font-size: .75rem; text-align: center; }

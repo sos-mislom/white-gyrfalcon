@@ -39,8 +39,8 @@ public final class NativeVoice {
             if (status != TextToSpeech.SUCCESS || tts == null) return;
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) { Log.i("VsmVoice", "tts_start"); }
-                @Override public void onDone(String utteranceId) { Log.i("VsmVoice", "tts_done"); resumeRecognition(utteranceId); }
-                @Override public void onError(String utteranceId) { Log.w("VsmVoice", "tts_error"); resumeRecognition(utteranceId); }
+                @Override public void onDone(String utteranceId) { Log.i("VsmVoice", "tts_done"); finishSpeech(utteranceId, true); }
+                @Override public void onError(String utteranceId) { Log.w("VsmVoice", "tts_error"); finishSpeech(utteranceId, false); }
             });
             Voice selected = null;
             if (tts.getVoices() == null) return;
@@ -79,9 +79,14 @@ public final class NativeVoice {
     }
 
     @JavascriptInterface public void speakVoice(String text, String gender) {
+        speakVoiceTurn(text, gender, "");
+    }
+
+    @JavascriptInterface public void speakVoiceTurn(String text, String gender, String turnId) {
         if (!trusted() || text == null) return;
         String speech = text.trim();
         if (speech.isEmpty() || speech.length() > 500) return;
+        String clientTurn = turnId != null && turnId.matches("conversation-[0-9]+") ? turnId : "";
         activity.runOnUiThread(() -> {
             if (!ttsReady || tts == null) return;
             String target = "female".equals(gender) ? "female" : "male".equals(gender) ? "male" : "female";
@@ -99,14 +104,14 @@ public final class NativeVoice {
             // A pitch shift cannot turn a male voice into a female one.
             tts.setPitch(1.0f);
             speaking = true;
-            currentSpeechId = "passenger-" + System.nanoTime();
+            currentSpeechId = clientTurn.isEmpty() ? "passenger-" + System.nanoTime() : clientTurn;
             if (listening && recognizer != null) {
                 listening = false;
                 recognizer.cancel();
             }
             if (tts.speak(speech, TextToSpeech.QUEUE_FLUSH, null, currentSpeechId) != TextToSpeech.SUCCESS) {
                 Log.w("VsmVoice", "tts_queue_error");
-                resumeRecognition(currentSpeechId);
+                finishSpeech(currentSpeechId, false);
             }
         });
     }
@@ -129,11 +134,15 @@ public final class NativeVoice {
         return score + voice.getQuality() / 100;
     }
 
-    private void resumeRecognition(String utteranceId) {
+    private void finishSpeech(String utteranceId, boolean success) {
         activity.runOnUiThread(() -> {
             if (!utteranceId.equals(currentSpeechId)) return;
             currentSpeechId = null;
             speaking = false;
+            if (utteranceId.startsWith("conversation-") && trusted()) {
+                web.evaluateJavascript("window.__vsmNativeSpeechDone?.(" +
+                    org.json.JSONObject.quote(utteranceId) + "," + success + ")", null);
+            }
             if (listeningRequested) web.postDelayed(() -> {
                 if (listeningRequested && !speaking) begin();
             }, 500);
@@ -241,6 +250,15 @@ public final class NativeVoice {
             listening = false;
             if (recognizer != null) recognizer.cancel();
         });
+    }
+
+    void pause() {
+        listeningRequested = false;
+        listening = false;
+        speaking = false;
+        currentSpeechId = null;
+        if (recognizer != null) recognizer.cancel();
+        if (tts != null) tts.stop();
     }
 
     void destroy() {

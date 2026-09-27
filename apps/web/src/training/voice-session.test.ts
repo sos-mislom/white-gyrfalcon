@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { interruptPlayback, VoiceSession, queuePassengerSpeech, stopPassengerReply } from "./voice-session";
+import { interruptPlayback, VoiceSession, queuePassengerSpeech, speakConversationReply, stopPassengerReply } from "./voice-session";
 import { MicVAD } from "@ricky0123/vad-web";
 vi.mock("@ricky0123/vad-web", () => ({ MicVAD: { new: vi.fn() } }));
 it("barge-in stops playback synchronously and only flags an actual interruption", () => {
@@ -85,6 +85,29 @@ it("waits for Android TTS instead of speaking with the browser's default voice",
     ready = true;
     queuePassengerSpeech("Помогите мне.", "android-ready-turn", true, "female");
     expect(speakVoice).toHaveBeenCalledWith("Помогите мне.", "female");
+  } finally { stopPassengerReply(); vi.unstubAllGlobals(); }
+});
+it("waits for Android speech completion before the next voice turn and ignores stale completions", async () => {
+  const speakVoiceTurn = vi.fn();
+  const browser = {
+    VsmVoice: { canSpeak: () => true, speakVoiceTurn, stopSpeech: vi.fn() },
+    speechSynthesis: { cancel: vi.fn() },
+  } as unknown as Window & { __vsmNativeSpeechDone?: (turn: string, success: boolean) => void };
+  vi.stubGlobal("window", browser);
+  try {
+    let completed = false;
+    const speech = speakConversationReply("Покажите билет. Я проверю место.", "female");
+    void speech.then(() => { completed = true; });
+    const turn = speakVoiceTurn.mock.calls[0]![2] as string;
+    expect(speakVoiceTurn).toHaveBeenCalledWith("Покажите билет. Я проверю место.", "female", turn);
+    browser.__vsmNativeSpeechDone?.("conversation-stale", true);
+    await Promise.resolve();
+    expect(completed).toBe(false);
+    browser.__vsmNativeSpeechDone?.(turn, true);
+    await expect(speech).resolves.toBe(true);
+    const interrupted = speakConversationReply("Следующая реплика.", "male");
+    stopPassengerReply();
+    await expect(interrupted).resolves.toBe(false);
   } finally { stopPassengerReply(); vi.unstubAllGlobals(); }
 });
 it("combines speech across short pauses and sends after two seconds of silence", async () => {

@@ -8,7 +8,7 @@ import { linkLocalHistory, profileHistory } from "../training/device-profile";
 import { passengerExpression } from "../training/passenger-scene";
 import { useNovelViewport } from "../training/use-novel-viewport";
 import { useGameClock } from "../training/use-game-clock";
-import { stopPassengerReply } from "../training/voice-session";
+import { queuePassengerSpeech, stopPassengerReply } from "../training/voice-session";
 import { NarrationBanner, PassengerStage, PassengerDialogueBubble, ConductorComposer, DebriefModal, HomeMenu } from "../vn-ui";
 import "./novel.css";
 
@@ -52,6 +52,14 @@ export default function HomePage() {
   const latest = session?.appliedActions.at(-1)?.key === feedback?.command.idempotencyKey ? feedback : undefined;
   const reply = latest?.actor.reply ?? (session ? memoryAwareReply(session) ?? session.passengerReply : "");
   const routeText = scenario ? `Белый кречет · ${scenario.location.zone}` : "Белый кречет";
+  const finalReplyKey = session ? `${session.id}:final:${latest?.command.idempotencyKey ?? session.appliedActions.at(-1)?.clientTimestamp ?? ""}` : "";
+  const finalVoiceGender = activeActor?.voice_profile?.gender ?? "neutral";
+
+  useEffect(() => {
+    if (!finished || !reply || !finalReplyKey) return;
+    queuePassengerSpeech(reply, finalReplyKey, true, finalVoiceGender);
+    return () => stopPassengerReply();
+  }, [finished, reply, finalReplyKey, finalVoiceGender]);
 
   return (
     <main className={`vn-screen${session ? " vn-scene-screen" : " vn-menu-screen"}`} ref={screen} aria-label="Белый кречет">
@@ -79,9 +87,10 @@ export default function HomePage() {
           <ConductorComposer
             busy={busy} active pending={training.record?.pendingFreeform} error={training.aiError}
             reply={training.clarification ?? reply} draftReply={training.draftReply}
-            replyKey={training.clarification ? session.id + ":clarification" : (training.record?.pendingFreeform?.clientTimestamp ?? latest?.command.clientTimestamp ?? session.appliedActions.at(-1)?.clientTimestamp ?? session.id)}
+            replyKey={training.clarification ? `${session.id}:clarification:${training.record?.revision ?? 0}` : (training.record?.pendingFreeform?.clientTimestamp ?? latest?.command.clientTimestamp ?? session.appliedActions.at(-1)?.clientTimestamp ?? session.id)}
             onSubmit={training.freeform} disabled={Boolean(error) || paused} muted={paused}
             voiceGender={activeActor?.voice_profile?.gender ?? "neutral"}
+            speakerId={activeActor?.id}
           />
         </div>
       </>}

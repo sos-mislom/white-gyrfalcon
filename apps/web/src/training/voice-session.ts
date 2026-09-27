@@ -23,6 +23,7 @@ interface NativeVoiceBridge {
   stopListening(): void;
   speak(text: string): void;
   speakVoice?(text: string, gender: string): void;
+  speakVoiceTurn?(text: string, gender: string, turnId: string): void;
   stopSpeech(): void;
 }
 type VoiceWindow = Window & {
@@ -30,6 +31,7 @@ type VoiceWindow = Window & {
   webkitSpeechRecognition?: new () => Recognition;
   VsmVoice?: NativeVoiceBridge;
   __vsmNativeSpeech?: (text: string, done: boolean, error: string) => void;
+  __vsmNativeSpeechDone?: (turnId: string, success: boolean) => void;
 };
 
 export function interruptPlayback(
@@ -42,8 +44,18 @@ export function interruptPlayback(
 
 let speechTurn = "";
 let spokenTurn = false;
+let conversationSpeech = 0;
+let cancelConversationSpeech: (() => void) | undefined;
 
 export type VoiceGender = "male" | "female" | "neutral";
+
+function selectedBrowserVoice(gender: VoiceGender) {
+  const voices = window.speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith("ru"));
+  const pattern = gender === "female"
+    ? /female|жен|svetlana|alena|elena|irina|anna|tatiana|tatyana|milena|-dfc-|-ruc-|-rue-/iu
+    : gender === "male" ? /(^|[^a-z])male|муж|dmitry|pavel|yuri|alex|maxim|-rud-|-ruf-/iu : null;
+  return pattern ? voices.find(v => pattern.test(v.name) && (gender !== "male" || !/female/i.test(v.name))) : voices[0];
+}
 
 function speakPassengerReply(text: string, gender: VoiceGender) {
   const browser = window as VoiceWindow;
@@ -59,11 +71,7 @@ function speakPassengerReply(text: string, gender: VoiceGender) {
     return false;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "ru-RU";
-  const voices = window.speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith("ru"));
-  const pattern = gender === "female"
-    ? /female|жен|svetlana|alena|elena|irina|anna|tatiana|tatyana|milena|-dfc-|-ruc-|-rue-/iu
-    : gender === "male" ? /(^|[^a-z])male|муж|dmitry|pavel|yuri|alex|maxim|-rud-|-ruf-/iu : null;
-  const selected = pattern ? voices.find(v => pattern.test(v.name) && (gender !== "male" || !/female/i.test(v.name))) : voices[0];
+  const selected = selectedBrowserVoice(gender);
   if (selected) utterance.voice = selected;
   utterance.pitch = 1;
   window.speechSynthesis.speak(utterance);
@@ -71,10 +79,57 @@ function speakPassengerReply(text: string, gender: VoiceGender) {
 }
 
 export function stopPassengerReply() {
+  cancelConversationSpeech?.();
+  cancelConversationSpeech = undefined;
   speechTurn = "";
   spokenTurn = false;
   (window as VoiceWindow).VsmVoice?.stopSpeech();
   window.speechSynthesis?.cancel();
+}
+
+/** Completes only when the current passenger utterance actually ends. */
+export function speakConversationReply(text: string, gender: VoiceGender = "neutral"): Promise<boolean> {
+  stopPassengerReply();
+  const line = text.trim().slice(0, 500);
+  if (!line) return Promise.resolve(false);
+  const browser = window as VoiceWindow;
+  const turnId = `conversation-${++conversationSpeech}`;
+  return new Promise((resolve) => {
+    let finished = false;
+    const finish = (played: boolean) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      if (browser.__vsmNativeSpeechDone === onNativeDone) browser.__vsmNativeSpeechDone = undefined;
+      if (cancelConversationSpeech === cancel) cancelConversationSpeech = undefined;
+      resolve(played);
+    };
+    const cancel = () => finish(false);
+    const onNativeDone = (completedId: string, success: boolean) => {
+      if (completedId === turnId) finish(success);
+    };
+    const timeout = setTimeout(() => finish(false), 45000);
+    cancelConversationSpeech = cancel;
+    if (browser.VsmVoice) {
+      if (!browser.VsmVoice.canSpeak() || !browser.VsmVoice.speakVoiceTurn) {
+        finish(false);
+        return;
+      }
+      browser.__vsmNativeSpeechDone = onNativeDone;
+      browser.VsmVoice.speakVoiceTurn(line, gender, turnId);
+      return;
+    }
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+      finish(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(line);
+    utterance.lang = "ru-RU";
+    utterance.voice = selectedBrowserVoice(gender) ?? null;
+    utterance.onend = () => finish(true);
+    utterance.onerror = () => finish(false);
+    window.speechSynthesis.speak(utterance);
+  });
 }
 
 /** Speak exactly one complete first sentence as soon as it is available. */
