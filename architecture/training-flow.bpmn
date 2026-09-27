@@ -1,0 +1,154 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_training-flow" targetNamespace="https://github.com/sos-mislom/white-gyrfalcon/architecture">
+  <bpmn:process id="Process_training-flow" name="Учебная смена и синхронизация" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_training-flow">
+      <bpmn:lane id="Player" name="Игрок">
+        <bpmn:flowNodeRef>Start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Speak</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Finish</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Client" name="Android / веб-клиент">
+        <bpmn:flowNodeRef>Load</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transcribe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Submit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Render</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Server" name="API и движок">
+        <bpmn:flowNodeRef>Generate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Apply</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Storage" name="PostgreSQL">
+        <bpmn:flowNodeRef>Save</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start" name="Игрок открывает сцену">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Load" name="Клиент загружает YAML-сцену">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:userTask id="Speak" name="Игрок произносит реплику">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Transcribe" name="Телефон распознаёт речь">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sendTask id="Submit" name="Клиент отправляет ход по SSE">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:serviceTask id="Generate" name="API получает реплику персонажа">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Apply" name="Движок применяет последствия">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Save" name="PostgreSQL сохраняет ход">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Render" name="Клиент показывает и озвучивает ответ">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Finish" name="Сцена завершена">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start" targetRef="Load" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Load" targetRef="Speak" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Speak" targetRef="Transcribe" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Transcribe" targetRef="Submit" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Submit" targetRef="Generate" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Generate" targetRef="Apply" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Apply" targetRef="Save" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Save" targetRef="Render" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Render" targetRef="Finish" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_training-flow">
+    <bpmndi:BPMNPlane id="Plane_training-flow" bpmnElement="Process_training-flow">
+      <bpmndi:BPMNShape id="Player_di" bpmnElement="Player" isHorizontal="true">
+        <dc:Bounds x="60" y="60" width="2260" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Client_di" bpmnElement="Client" isHorizontal="true">
+        <dc:Bounds x="60" y="230" width="2260" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Server_di" bpmnElement="Server" isHorizontal="true">
+        <dc:Bounds x="60" y="400" width="2260" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Storage_di" bpmnElement="Storage" isHorizontal="true">
+        <dc:Bounds x="60" y="570" width="2260" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start">
+        <dc:Bounds x="220" y="95" width="45" height="45" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Load_di" bpmnElement="Load">
+        <dc:Bounds x="390" y="265" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Speak_di" bpmnElement="Speak">
+        <dc:Bounds x="560" y="95" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transcribe_di" bpmnElement="Transcribe">
+        <dc:Bounds x="730" y="265" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Submit_di" bpmnElement="Submit">
+        <dc:Bounds x="900" y="265" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Generate_di" bpmnElement="Generate">
+        <dc:Bounds x="1070" y="435" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Apply_di" bpmnElement="Apply">
+        <dc:Bounds x="1240" y="435" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Save_di" bpmnElement="Save">
+        <dc:Bounds x="1410" y="605" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Render_di" bpmnElement="Render">
+        <dc:Bounds x="1580" y="265" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Finish_di" bpmnElement="Finish">
+        <dc:Bounds x="1750" y="95" width="45" height="45" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="265" y="117" />
+        <di:waypoint x="390" y="302" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="500" y="302" />
+        <di:waypoint x="560" y="132" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="670" y="132" />
+        <di:waypoint x="730" y="302" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="840" y="302" />
+        <di:waypoint x="900" y="302" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1010" y="302" />
+        <di:waypoint x="1070" y="472" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1180" y="472" />
+        <di:waypoint x="1240" y="472" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1350" y="472" />
+        <di:waypoint x="1410" y="642" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1520" y="642" />
+        <di:waypoint x="1580" y="302" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1690" y="302" />
+        <di:waypoint x="1750" y="117" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

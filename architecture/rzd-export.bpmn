@@ -1,0 +1,149 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_rzd-export" targetNamespace="https://github.com/sos-mislom/white-gyrfalcon/architecture">
+  <bpmn:process id="Process_rzd-export" name="Выгрузка учебных результатов в контур РЖД" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_rzd-export">
+      <bpmn:lane id="Rzd" name="Внешний кадровый контур">
+        <bpmn:flowNodeRef>Start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Bind</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Decision</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Api" name="Интеграционный API">
+        <bpmn:flowNodeRef>Authorize</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Assess</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Return</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Db" name="PostgreSQL">
+        <bpmn:flowNodeRef>Store</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Read</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start" name="Уполномоченный интегратор">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sendTask id="Bind" name="Связать внешний ID с профилем">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:serviceTask id="Authorize" name="API проверяет ключ интеграции">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Store" name="БД сохраняет привязку">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sendTask id="Request" name="Запросить отчёт JSON или CSV">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:serviceTask id="Read" name="БД читает подтверждённые смены">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Assess" name="API проверяет доказательства и пороги">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sendTask id="Return" name="API выдаёт учебную рекомендацию">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:userTask id="Decision" name="Работодатель принимает кадровое решение">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End" name="Процесс завершён">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start" targetRef="Bind" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Bind" targetRef="Authorize" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Authorize" targetRef="Store" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Store" targetRef="Request" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Request" targetRef="Read" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Read" targetRef="Assess" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Assess" targetRef="Return" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Return" targetRef="Decision" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Decision" targetRef="End" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_rzd-export">
+    <bpmndi:BPMNPlane id="Plane_rzd-export" bpmnElement="Process_rzd-export">
+      <bpmndi:BPMNShape id="Rzd_di" bpmnElement="Rzd" isHorizontal="true">
+        <dc:Bounds x="60" y="60" width="2260" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Api_di" bpmnElement="Api" isHorizontal="true">
+        <dc:Bounds x="60" y="230" width="2260" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Db_di" bpmnElement="Db" isHorizontal="true">
+        <dc:Bounds x="60" y="400" width="2260" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start">
+        <dc:Bounds x="220" y="95" width="45" height="45" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Bind_di" bpmnElement="Bind">
+        <dc:Bounds x="390" y="95" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Authorize_di" bpmnElement="Authorize">
+        <dc:Bounds x="560" y="265" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Store_di" bpmnElement="Store">
+        <dc:Bounds x="730" y="435" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Request_di" bpmnElement="Request">
+        <dc:Bounds x="900" y="95" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Read_di" bpmnElement="Read">
+        <dc:Bounds x="1070" y="435" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Assess_di" bpmnElement="Assess">
+        <dc:Bounds x="1240" y="265" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Return_di" bpmnElement="Return">
+        <dc:Bounds x="1410" y="265" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Decision_di" bpmnElement="Decision">
+        <dc:Bounds x="1580" y="95" width="110" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_di" bpmnElement="End">
+        <dc:Bounds x="1750" y="95" width="45" height="45" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="265" y="117" />
+        <di:waypoint x="390" y="132" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="500" y="132" />
+        <di:waypoint x="560" y="302" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="670" y="302" />
+        <di:waypoint x="730" y="472" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="840" y="472" />
+        <di:waypoint x="900" y="132" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1010" y="132" />
+        <di:waypoint x="1070" y="472" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1180" y="472" />
+        <di:waypoint x="1240" y="302" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1350" y="302" />
+        <di:waypoint x="1410" y="302" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1520" y="302" />
+        <di:waypoint x="1580" y="132" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1690" y="132" />
+        <di:waypoint x="1750" y="117" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

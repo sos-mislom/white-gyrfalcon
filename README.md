@@ -7,7 +7,7 @@
   <img src="media/dialogue.png" alt="Диалог с пассажиром" width="280" />
 </p>
 
-[Скачать APK 0.5.2](https://github.com/sos-mislom/white-gyrfalcon/releases/download/v0.5.2/white-gyrfalcon-0.5.2.apk) · Android 8+
+[Скачать APK 0.5.4](https://github.com/sos-mislom/white-gyrfalcon/releases/download/v0.5.4/white-gyrfalcon-0.5.4.apk) · Android 8+
 
 ## Уже работает
 
@@ -33,6 +33,8 @@ Android APK — подписанная WebView-оболочка этого кл�
 | `packages/simulation-core` | сценарии, последствия и детерминированный расчёт |
 | `packages/api-contracts` | общие схемы данных |
 
+[Топология компонентов и BPMN-процессы](architecture/README.md).
+
 ## Локальный запуск
 
 Нужны Node.js 24.15+ и npm 11+. После `npm install` выполните:
@@ -42,6 +44,8 @@ npm run dev
 ```
 
 Клиент доступен на `http://localhost:3000`, API — на `http://localhost:3100`. Настройки приведены в `.env.example`. Для генерации реплик и распознавания действий задайте `AI_ACTOR_BASE_URL`, `AI_ACTOR_MODEL_NAME` и `AI_ACTOR_API_KEY` через окружение; секреты не записывайте в Git. Игровые правила и явные действия доступны без модели. Проверка проекта: `npm run check`.
+
+Контракт API доступен в Swagger по адресу `http://localhost:3100/docs` и как OpenAPI JSON по `/docs-json`. Помимо игровых методов, API отдаёт конфигурацию (`/config`), рейтинг (`/leaderboard`, `/leaderboard/export.csv`) и учебный отчёт для внешней интеграции (`/integrations/rzd/users/{id}/report`). Изменение конфигурации и отчёты по сотруднику требуют серверного `INTEGRATION_API_KEY_FILE` или `INTEGRATION_API_KEY` длиной от 32 символов. Отчёт содержит учебную рекомендацию к рассмотрению, а не кадровый допуск.
 
 Android-проект собирается Gradle 8.13 и Android SDK 36. Для собственного APK передайте `-PstandUrl=https://<ваш-стенд>`; release-подпись и пропуск читаются только из локальной `.private/android/`. Ключ подписи и готовые APK не хранятся в Git.
 
