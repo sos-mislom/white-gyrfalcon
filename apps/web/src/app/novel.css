@@ -300,6 +300,13 @@
 .vn-history-item strong, .vn-ranking-item strong { font-family: 'VN Montserrat',Arial,sans-serif; font-weight: 700; }
 .vn-profile-summary { width: 100%; display: flex; align-items: center; gap: .7rem; border-bottom: 1px solid rgba(204,204,204,.45); padding: .7rem 0 1rem; color: #fff; font-size: 1.05rem; }
 .vn-profile-summary img { object-fit: contain; }
+.vn-profile-summary span { display: grid; gap: .2rem; }
+.vn-profile-summary small { color: #cccccc; font-size: .7rem; }
+.vn-profile-insights { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; border-bottom: 1px solid rgba(204,204,204,.45); padding-bottom: 1rem; }
+.vn-profile-insights div { display: grid; gap: .35rem; }
+.vn-profile-insights small { color: #d9aa69; font-size: .56rem; font-weight: 700; letter-spacing: .09em; }
+.vn-profile-insights strong { color: #fff; font-size: .9rem; line-height: 1.2; }
+.vn-profile-footnote { align-self: flex-start; margin: 0; color: #cccccc; font-size: .66rem; }
 .vn-tab-content .vn-radar-shape { stroke: #a6192e; }.vn-tab-content .vn-radar-node { fill: #a6192e; }
 .vn-tab-content .vn-radar-legend strong { color: #fff; }
 .vn-character-igor .vn-blink-frame { --blink-x: 51%; --blink-y: 8.5%; }

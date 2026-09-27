@@ -45,6 +45,16 @@ export function standOverall(session: SessionStateDto, feedback?: FreeformAction
   return Math.round(axes.reduce((sum, axis) => sum + axis.value, 0) / axes.length);
 }
 
+/** A profile describes the full assessed history, including failed shifts. */
+export function profileAxes(sessions: SessionStateDto[]): StandAxis[] {
+  if (!sessions.length) return [];
+  const perSession = sessions.map((session) => standAxes(session));
+  return perSession[0]!.map((axis, index) => ({
+    label: axis.label,
+    value: Math.round(perSession.reduce((sum, row) => sum + row[index]!.value, 0) / perSession.length),
+  }));
+}
+
 function point(index: number, radius: number) {
   const angle = -Math.PI / 2 + index * Math.PI / 3;
   return `${120 + Math.cos(angle) * radius},${120 + Math.sin(angle) * radius}`;

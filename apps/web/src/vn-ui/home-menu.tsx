@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getScenario, listScenarios, type ScenarioSummaryDto } from "@vsm/simulation-core";
 import type { SessionStateDto } from "@vsm/api-contracts";
-import { StandRadar, standAxes, standOverall } from "./stand-radar";
+import { StandRadar, profileAxes, standOverall } from "./stand-radar";
 
 type Tab = "scenes" | "history" | "ranking" | "profile";
 type Filter = "all" | "character" | "environment";
@@ -77,6 +77,9 @@ export function HomeMenu({ ready, busy, history, featuredId, onSelect, onRandom 
   const assessed = finished.filter((session) => session.outcome !== "abandoned");
   const sorted = [...assessed].sort((left, right) => score(right) - score(left));
   const best = sorted[0];
+  const portrait = profileAxes(assessed);
+  const strongest = portrait.reduce((current, axis) => !current || axis.value > current.value ? axis : current, portrait[0]);
+  const growth = portrait.reduce((current, axis) => !current || axis.value < current.value ? axis : current, portrait[0]);
   const toSlide = (index: number) => {
     setSlide(index);
     const item = rail.current?.children[index] as HTMLElement | undefined;
@@ -120,7 +123,7 @@ export function HomeMenu({ ready, busy, history, featuredId, onSelect, onRandom 
       </section>}
       {tab === "history" && <section className="vn-tab-content"><h2>История</h2>{finished.length ? <div className="vn-history-list">{[...finished].reverse().map((session, index) => <button className="vn-history-item" key={session.id} type="button" disabled={!ready || busy} onClick={() => onSelect(session.scenarioId)}><span className="vn-history-index">{String(finished.length - index).padStart(2, "0")}</span><span><strong>{getScenario(session.scenarioId)?.menu_label ?? "Смена"}</strong><small>{session.outcome === "abandoned" ? "Прервано · без оценки" : `${session.outcome === "resolved" ? "Разрешено" : "Не разрешено"} · ${score(session)} баллов`}</small></span><Icon kind="arrow" size={18}/></button>)}</div> : <div className="vn-empty-state"><button type="button" onClick={() => setTab("scenes")}>К сценам <Icon kind="arrow" size={18}/></button></div>}</section>}
       {tab === "ranking" && <section className="vn-tab-content"><h2>Рейтинг</h2>{sorted.length ? <div className="vn-ranking-list">{sorted.slice(0,12).map((session,index) => <div className="vn-ranking-item" key={session.id}><span className="vn-ranking-place">{String(index + 1).padStart(2,"0")}</span><span><strong>{getScenario(session.scenarioId)?.menu_label ?? "Смена"}</strong><small>{session.outcome === "resolved" ? "Решено" : "Не решено"}</small></span><b>{score(session)}</b></div>)}</div> : <div className="vn-empty-state"><button type="button" onClick={() => setTab("scenes")}>К сценам <Icon kind="arrow" size={18}/></button></div>}</section>}
-      {tab === "profile" && <section className="vn-tab-content"><h2>Профиль</h2>{best ? <><div className="vn-profile-summary"><Image src="/visual-novel/falcon_mark.webp" alt="" width={52} height={52} unoptimized /><strong>{assessed.length} {assessed.length === 1 ? "смена" : "смен"}</strong></div><StandRadar axes={standAxes(best)} id="profile-radar" /></> : <div className="vn-empty-state"><button type="button" onClick={() => setTab("scenes")}>К сценам <Icon kind="arrow" size={18}/></button></div>}</section>}
+      {tab === "profile" && <section className="vn-tab-content"><h2>Профиль</h2>{portrait.length ? <><div className="vn-profile-summary"><Image src="/visual-novel/falcon_mark.webp" alt="" width={52} height={52} unoptimized /><span><strong>Портрет решений</strong><small>{assessed.length} {assessed.length === 1 ? "завершённая смена" : "завершённых смен"}</small></span></div><div className="vn-profile-insights"><div><small>СИЛЬНАЯ СТОРОНА</small><strong>{strongest?.label}</strong></div><div><small>ТРЕБУЕТ ВНИМАНИЯ</small><strong>{growth?.label}</strong></div></div><StandRadar axes={portrait} id="profile-radar" /><p className="vn-profile-footnote">Средние показатели игровых решений.</p></> : <div className="vn-empty-state"><button type="button" onClick={() => setTab("scenes")}>К сценам <Icon kind="arrow" size={18}/></button></div>}</section>}
     </div>
     <nav className="vn-home-nav" aria-label="Разделы">{tabs.map((item) => <button key={item.key} type="button" className={tab === item.key ? "is-active" : ""} aria-current={tab === item.key ? "page" : undefined} onClick={() => setTab(item.key)}><Icon kind={item.icon} size={22}/><small>{item.label}</small></button>)}</nav>
   </div>;
