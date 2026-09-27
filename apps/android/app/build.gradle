@@ -2,7 +2,7 @@ import groovy.json.JsonSlurper
 import java.util.Properties
 plugins { id 'com.android.application' }
 def accessFile = rootProject.file('../../.private/ops/public-access.json')
-def standUrl = project.findProperty("standUrl") ?: (accessFile.isFile() ? new JsonSlurper().parse(accessFile).baseUrl : 'https://vsm-194-87-250-20.sslip.io')
+def standUrl = project.findProperty("standUrl") ?: (accessFile.isFile() ? new JsonSlurper().parse(accessFile).baseUrl : 'https://vsm-195-133-66-226.sslip.io')
 def signingFile = rootProject.file('../../.private/android/signing.properties')
 def signing = new Properties()
 if (signingFile.isFile()) signingFile.withInputStream { signing.load(it) }
@@ -18,8 +18,8 @@ android {
         applicationId 'ru.vsm.trainer'
         minSdk 26
         targetSdk 36
-        versionCode 11
-        versionName '0.6.3'
+        versionCode 12
+        versionName '0.6.4'
         buildConfigField 'String', 'STAND_URL', '"' + standUrl + '"'
         buildConfigField 'String', 'MOBILE_ACCESS_TOKEN', '"' + mobileToken + '"'
     }
