@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -29,6 +30,7 @@ public final class NativeVoice {
     private boolean listening;
     private boolean listeningRequested;
     private boolean speaking;
+    private boolean permissionRequestPending;
     private String currentSpeechId;
     private int permissionRequestCode = 7304;
 
@@ -38,7 +40,10 @@ public final class NativeVoice {
         tts = new TextToSpeech(activity, status -> {
             if (status != TextToSpeech.SUCCESS || tts == null) return;
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                @Override public void onStart(String utteranceId) { Log.i("VsmVoice", "tts_start"); }
+                @Override public void onStart(String utteranceId) {
+                    Log.i("VsmVoice", "tts_start");
+                    activity.runOnUiThread(() -> watchSpeechCompletion(utteranceId, SystemClock.uptimeMillis()));
+                }
                 @Override public void onDone(String utteranceId) { Log.i("VsmVoice", "tts_done"); finishSpeech(utteranceId, true); }
                 @Override public void onError(String utteranceId) { Log.w("VsmVoice", "tts_error"); finishSpeech(utteranceId, false); }
             });
@@ -149,6 +154,25 @@ public final class NativeVoice {
         });
     }
 
+    /** Some device TTS engines finish playback without invoking onDone. */
+    private void watchSpeechCompletion(String utteranceId, long startedAt) {
+        web.postDelayed(() -> {
+            if (!utteranceId.equals(currentSpeechId) || !speaking || tts == null) return;
+            if (!tts.isSpeaking()) {
+                Log.i("VsmVoice", "tts_completion_fallback");
+                finishSpeech(utteranceId, true);
+                return;
+            }
+            if (SystemClock.uptimeMillis() - startedAt >= 30000) {
+                Log.w("VsmVoice", "tts_watchdog_stop");
+                tts.stop();
+                finishSpeech(utteranceId, false);
+                return;
+            }
+            watchSpeechCompletion(utteranceId, startedAt);
+        }, 500);
+    }
+
     @JavascriptInterface public void stopSpeech() {
         if (!trusted()) return;
         activity.runOnUiThread(() -> { currentSpeechId = null; speaking = false; if (tts != null) tts.stop(); });
@@ -159,6 +183,7 @@ public final class NativeVoice {
         activity.runOnUiThread(() -> {
             listeningRequested = true;
             if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                permissionRequestPending = true;
                 activity.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, permissionRequestCode);
                 return;
             }
@@ -169,8 +194,12 @@ public final class NativeVoice {
 
     void onPermissionResult(int requestCode, int[] grants) {
         if (requestCode != permissionRequestCode) return;
+        permissionRequestPending = false;
         if (grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED) begin();
-        else emit("", true, "microphone_permission_denied");
+        else {
+            listeningRequested = false;
+            emit("", true, "microphone_permission_denied");
+        }
     }
 
     @android.annotation.TargetApi(31)
@@ -252,13 +281,16 @@ public final class NativeVoice {
         });
     }
 
-    void pause() {
+    boolean pause() {
+        if (permissionRequestPending) return false;
+        boolean interrupted = listeningRequested || speaking;
         listeningRequested = false;
         listening = false;
         speaking = false;
         currentSpeechId = null;
         if (recognizer != null) recognizer.cancel();
         if (tts != null) tts.stop();
+        return interrupted;
     }
 
     void destroy() {

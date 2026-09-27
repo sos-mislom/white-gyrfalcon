@@ -66,6 +66,7 @@
 .vn-debrief-norms h3 { margin: 0; color: #d7aa70; font-size: .68rem; letter-spacing: .13em; }
 .vn-debrief-norms a { display: grid; gap: .15rem; padding: .55rem .7rem; border: 1px solid rgba(215,170,112,.28); border-radius: .45rem; color: inherit; text-decoration: none; font-size: .78rem; }
 .vn-debrief-norms a span { opacity: .78; }
+.vn-debrief-norms a small { color: #f0c38a; font-size: .68rem; font-weight: 750; }
 .vn-reply-textarea::placeholder { color: rgba(241,239,235,.62); }
 .vn-composer-controls { display: flex; flex: none; align-items: center; gap: .3rem; }
 .vn-btn-mic, .vn-btn-send { width: 2.75rem; height: 2.75rem; display: grid; place-items: center; border-radius: 50%; transition: transform .2s ease, background .2s ease; }
@@ -289,6 +290,7 @@
 .vn-poster-card > strong { font-weight: 750; }.vn-poster-card > small { color: #ccc; }
 .vn-cover-setting, .vn-poster-art.is-environment .vn-cover-setting { filter: saturate(.8) brightness(.8); }
 .vn-menu-screen .vn-home-nav { border-top: 2px solid #a6192e; background: #002855; }
+.vn-menu-screen .vn-home-nav { grid-template-columns: repeat(5,minmax(0,1fr)); }
 .vn-menu-screen .vn-home-nav button { color: #ccc; }.vn-menu-screen .vn-home-nav button.is-active { color: #fff; }.vn-menu-screen .vn-home-nav button small { font-weight: 700; }
 .vn-tab-content { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.15rem; padding: 2rem 1.2rem; background: #002855; }
 .vn-tab-content > h2 { color: #fff; font: 800 clamp(1.8rem,8vw,2.35rem)/1.08 'VN Montserrat',Arial,sans-serif; letter-spacing: -.03em; text-align: center; }
@@ -310,6 +312,27 @@
 .vn-profile-footnote { align-self: flex-start; margin: 0; color: #cccccc; font-size: .66rem; }
 .vn-tab-content .vn-radar-shape { stroke: #a6192e; }.vn-tab-content .vn-radar-node { fill: #a6192e; }
 .vn-tab-content .vn-radar-legend strong { color: #fff; }
+.vn-law-library { align-items: stretch; justify-content: flex-start; gap: 1.2rem; padding: max(6.2rem,calc(env(safe-area-inset-top) + 5rem)) 1.2rem 2rem; }
+.vn-law-library > h2 { text-align: left; }
+.vn-law-search { display: block; width: 100%; border-bottom: 1px solid #ccc; }
+.vn-law-search input { width: 100%; min-height: 2.8rem; border: 0; outline: 0; background: transparent; color: #fff; font: 600 .85rem 'VN Montserrat',Arial,sans-serif; }
+.vn-law-search input::placeholder { color: #ccc; }
+.vn-law-search:focus-within { border-color: #fff; }
+.vn-law-groups { display: grid; gap: 1.7rem; }
+.vn-law-group { display: grid; }
+.vn-law-group h3 { margin: 0; padding: .1rem 0 .75rem; color: #fff; font: 800 .8rem 'VN Montserrat',Arial,sans-serif; text-transform: uppercase; letter-spacing: .04em; }
+.vn-law-entry { padding: .9rem 0 1rem; border-top: 1px solid rgba(204,204,204,.4); }
+.vn-law-entry-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: .55rem; }
+.vn-law-entry-heading strong { color: #fff; font: 750 1.1rem 'VN Montserrat',Arial,sans-serif; }
+.vn-law-entry-heading span { color: #ccc; font: 600 .65rem 'VN Montserrat',Arial,sans-serif; white-space: nowrap; }
+.vn-law-excerpt { display: flex; align-items: flex-start; justify-content: space-between; gap: .65rem; padding: .25rem 0; color: #fff; font: 500 .8rem/1.45 'VN Montserrat',Arial,sans-serif; text-decoration: none; }
+.vn-law-excerpt span { flex: none; color: #dba3aa; font-size: 1rem; }
+.vn-law-excerpt:hover, .vn-law-excerpt:focus-visible { text-decoration: underline; text-decoration-color: #dba3aa; text-underline-offset: .2rem; }
+.vn-law-scenes { margin: .65rem 0 0; color: #ccc; font: 600 .64rem/1.4 'VN Montserrat',Arial,sans-serif; }
+.vn-law-sources { display: grid; gap: .65rem; padding: 1rem 0 1.5rem; border-top: 2px solid #a6192e; }
+.vn-law-sources span { color: #ccc; font: 750 .62rem 'VN Montserrat',Arial,sans-serif; letter-spacing: .08em; }
+.vn-law-sources a { color: #fff; font: 650 .78rem 'VN Montserrat',Arial,sans-serif; text-decoration: underline; text-decoration-color: #a6192e; text-underline-offset: .2rem; }
+.vn-law-empty { color: #ccc; font: 600 .85rem 'VN Montserrat',Arial,sans-serif; }
 .vn-character-igor .vn-blink-frame { --blink-x: 51%; --blink-y: 8.5%; }
 .vn-character-tamara .vn-blink-frame { --blink-x: 50%; --blink-y: 9.2%; }
 .vn-character-artem .vn-blink-frame { --blink-x: 50%; --blink-y: 8%; }

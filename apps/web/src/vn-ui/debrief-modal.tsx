@@ -41,7 +41,7 @@ export function DebriefModal({ session, reply, feedback, disabled, onRestart, on
       <StandRadar axes={axes} id={`debrief-${session.id}`} />
       <section className="vn-debrief-norms" aria-label="Правовая основа сцены">
         <h3>ОСНОВАНИЕ</h3>
-        {norms.map((norm) => <a key={`${norm.act}:${norm.clause}`} href={norm.url} target="_blank" rel="noopener noreferrer"><strong>{norm.act} · {norm.clause}</strong><span>{norm.application}</span></a>)}
+        {norms.map((norm) => <a key={`${norm.act}:${norm.clause}`} href={norm.url} aria-label={`${norm.act}, ${norm.clause}. ${norm.application} Открыть официальный документ`}><strong>{norm.act} · {norm.clause}</strong><span>{norm.application}</span><small>Открыть документ ↗</small></a>)}
       </section>
       <div className="vn-debrief-actions"><button type="button" className="vn-debrief-primary" disabled={disabled} onClick={onMenu}>К историям <span aria-hidden="true">→</span></button><div><button type="button" disabled={disabled} onClick={onRestart}>Повторить</button><button type="button" onClick={share}>Поделиться</button></div></div>
     </section>

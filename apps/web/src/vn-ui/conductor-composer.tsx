@@ -104,6 +104,7 @@ export function ConductorComposer({
       },
       setVoiceStatus,
       setText,
+      endConversation,
     );
     voice.current = session;
     try {

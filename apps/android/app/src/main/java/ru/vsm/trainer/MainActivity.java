@@ -2,11 +2,14 @@ package ru.vsm.trainer;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.HttpAuthHandler;
@@ -21,6 +24,7 @@ public final class MainActivity extends Activity {
     private WebView web;
     private NativeVoice nativeVoice;
     private boolean shellRefreshStarted;
+    private boolean voiceInterruptedByPause;
     private final String host = Uri.parse(BuildConfig.STAND_URL).getHost();
     private final String entryUrl = BuildConfig.STAND_URL + "/play";
 
@@ -48,7 +52,15 @@ public final class MainActivity extends Activity {
         web.addJavascriptInterface(new DeviceIdentity(this), "VsmDevice");
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return !allowed(request.getUrl());
+                Uri uri = request.getUrl();
+                if (allowed(uri)) return false;
+                if (request.isForMainFrame() && "https".equalsIgnoreCase(uri.getScheme()) &&
+                    "publication.pravo.gov.ru".equalsIgnoreCase(uri.getHost()) &&
+                    uri.getPath() != null && uri.getPath().matches("/Document/View/[0-9]+")) {
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)); }
+                    catch (ActivityNotFoundException error) { Log.w("VsmWeb", "official_document_browser_missing"); }
+                }
+                return true;
             }
             @Override public void onPageFinished(WebView view, String url) {
                 nativeVoice.setCurrentUrl(url);
@@ -85,19 +97,15 @@ public final class MainActivity extends Activity {
         });
         root.addView(web, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
-        if (BuildConfig.MOBILE_ACCESS_TOKEN.isEmpty()) web.loadUrl(entryUrl);
-        else {
+        if (!BuildConfig.MOBILE_ACCESS_TOKEN.isEmpty()) {
             CookieManager cookies = CookieManager.getInstance();
             cookies.setAcceptCookie(true);
             cookies.setCookie(BuildConfig.STAND_URL,
-                "vsm_mobile=" + BuildConfig.MOBILE_ACCESS_TOKEN + "; Secure; HttpOnly; SameSite=Strict; Path=/",
-                accepted -> {
-                    if (accepted) { cookies.flush(); web.loadUrl(entryUrl); }
-                    else new AlertDialog.Builder(MainActivity.this)
-                        .setMessage("Не удалось открыть учебный стенд. Повторите запуск приложения.")
-                        .setPositiveButton("Понятно", (dialog, which) -> dialog.dismiss()).show();
-                });
+                "vsm_mobile=" + BuildConfig.MOBILE_ACCESS_TOKEN + "; Secure; HttpOnly; SameSite=Strict; Path=/");
+            cookies.flush();
         }
+        Log.i("VsmWeb", "load_start");
+        web.loadUrl(entryUrl);
     }
 
     private boolean allowed(Uri uri) {
@@ -111,12 +119,14 @@ public final class MainActivity extends Activity {
         nativeVoice.onPermissionResult(requestCode, grantResults);
     }
     @Override protected void onPause() {
-        nativeVoice.pause();
+        voiceInterruptedByPause = nativeVoice.pause();
         super.onPause();
     }
     @Override protected void onResume() {
         super.onResume();
-        if (web != null) web.evaluateJavascript("window.dispatchEvent(new Event('vsm-voice-interrupted'))", null);
+        if (voiceInterruptedByPause && web != null)
+            web.evaluateJavascript("window.dispatchEvent(new Event('vsm-voice-interrupted'))", null);
+        voiceInterruptedByPause = false;
     }
     @Override protected void onDestroy() { nativeVoice.destroy(); web.destroy(); super.onDestroy(); }
 }

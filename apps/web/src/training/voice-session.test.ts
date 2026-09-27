@@ -130,7 +130,9 @@ it("combines speech across short pauses and sends after two seconds of silence",
     browser.__vsmNativeSpeech?.("Покажите билет.", true, "");
     await vi.advanceTimersByTimeAsync(1000);
     browser.__vsmNativeSpeech?.("", false, "speech_started");
-    await vi.advanceTimersByTimeAsync(1300);
+    await vi.advanceTimersByTimeAsync(500);
+    browser.__vsmNativeSpeech?.("second phrase", false, "");
+    await vi.advanceTimersByTimeAsync(800);
     expect(sent).not.toHaveBeenCalled();
     browser.__vsmNativeSpeech?.("Я уточню место.", true, "");
     expect(partial).toHaveBeenLastCalledWith("Покажите билет. Я уточню место.");
@@ -138,6 +140,35 @@ it("combines speech across short pauses and sends after two seconds of silence",
     expect(sent).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(sent).toHaveBeenCalledExactlyOnceWith("Покажите билет. Я уточню место.", false);
+  } finally {
+    await voice.stop();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
+it("sends after two seconds despite spurious Android speech-start events", async () => {
+  vi.useFakeTimers();
+  const sent = vi.fn();
+  const native = {
+    canRecognize: () => true,
+    startListening: vi.fn(),
+    stopListening: vi.fn(),
+    stopSpeech: vi.fn(),
+  };
+  const browser = { VsmVoice: native, speechSynthesis: { cancel: vi.fn() }, setTimeout } as unknown as Window & {
+    __vsmNativeSpeech?: (text: string, done: boolean, error: string) => void;
+  };
+  vi.stubGlobal("window", browser);
+  const voice = new VoiceSession(sent, () => {});
+  try {
+    await voice.start();
+    browser.__vsmNativeSpeech?.("Please check the ticket", true, "");
+    await vi.advanceTimersByTimeAsync(600);
+    browser.__vsmNativeSpeech?.("", false, "speech_started");
+    await vi.advanceTimersByTimeAsync(800);
+    browser.__vsmNativeSpeech?.("", true, "recognition_error_7");
+    await vi.advanceTimersByTimeAsync(600);
+    expect(sent).toHaveBeenCalledExactlyOnceWith("Please check the ticket", false);
   } finally {
     await voice.stop();
     vi.useRealTimers();

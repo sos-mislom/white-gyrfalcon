@@ -1,12 +1,12 @@
 import type { CreateSessionDto, SessionEventDto, SessionStateDto, SubmitActionDto, SyncSessionDto } from "@vsm/api-contracts";
 import { ENGINE_VERSION } from "@vsm/api-contracts";
 import { resolveEmotionalD20 } from "./d20";
-import { getScenario, getRandomScenario, getFeaturedScenario, listScenarios, loadAllScenarios, requireScenario, type ScenarioSummaryDto } from "./scenario-loader";
+import { getScenario, getRandomScenario, getFeaturedScenario, listScenarios, listLegalReferences, loadAllScenarios, requireScenario, type ScenarioSummaryDto, type LegalReferenceDto } from "./scenario-loader";
 
 export { resolveD20, resolveEmotionalD20 } from "./d20";
 export { dialogueMemory, memoryAwareReply } from "./dialogue-memory";
 export { sceneAnalysis } from "./scene-analysis";
-export { getScenario, getRandomScenario, getFeaturedScenario, listScenarios, loadAllScenarios, requireScenario, type ScenarioSummaryDto };
+export { getScenario, getRandomScenario, getFeaturedScenario, listScenarios, listLegalReferences, loadAllScenarios, requireScenario, type ScenarioSummaryDto, type LegalReferenceDto };
 export { allowedConsequences, SCENE_SOURCE } from "./consequences";
 
 export class SimulationError extends Error {

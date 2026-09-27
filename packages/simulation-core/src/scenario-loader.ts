@@ -15,6 +15,14 @@ export interface ScenarioSummaryDto {
   difficultyDc: number;
 }
 
+export interface LegalReferenceDto {
+  act: string;
+  clause: string;
+  url: string;
+  applications: string[];
+  scenes: { scenarioId: string; title: string }[];
+}
+
 let cachedScenarios: ScenarioDefinitionDto[] | null = null;
 
 export function loadAllScenarios(): ScenarioDefinitionDto[] {
@@ -76,6 +84,26 @@ export function listScenarios(): ScenarioSummaryDto[] {
     urgency: s.incident.urgency,
     difficultyDc: s.incident.difficulty_dc,
   }));
+}
+
+/** The reading room and debrief use the same sources as the YAML scenes. */
+export function listLegalReferences(): LegalReferenceDto[] {
+  const references = new Map<string, LegalReferenceDto>();
+  for (const scene of loadAllScenarios()) {
+    for (const basis of scene.legal_basis) {
+      const key = `${basis.act}\u0000${basis.clause}`;
+      let reference = references.get(key);
+      if (!reference) {
+        reference = { act: basis.act, clause: basis.clause, url: basis.url, applications: [], scenes: [] };
+        references.set(key, reference);
+      }
+      if (reference.url !== basis.url) throw new Error(`Conflicting legal source for ${basis.act} ${basis.clause}`);
+      if (!reference.applications.includes(basis.application)) reference.applications.push(basis.application);
+      reference.scenes.push({ scenarioId: scene.scenario_id, title: scene.menu_label ?? scene.title });
+    }
+  }
+  return [...references.values()].sort((left, right) =>
+    left.act.localeCompare(right.act, "ru") || left.clause.localeCompare(right.clause, "ru", { numeric: true }));
 }
 
 export function getRandomScenario(

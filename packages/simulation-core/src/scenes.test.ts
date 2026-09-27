@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ENGINE_VERSION, sessionStateSchema } from "@vsm/api-contracts";
-import { applyAction, createSession, getFeaturedScenario, getScenario, loadAllScenarios, replaySession, sceneAnalysis } from "./index";
+import { applyAction, createSession, getFeaturedScenario, getScenario, listLegalReferences, loadAllScenarios, replaySession, sceneAnalysis } from "./index";
 
 const command = (actionId: string, utterance?: string, actorReply?: string) => ({
   idempotencyKey: crypto.randomUUID(), actionId, clientTimestamp: "2026-09-26T00:00:00Z",
@@ -8,6 +8,13 @@ const command = (actionId: string, utterance?: string, actorReply?: string) => (
 });
 
 describe("YAML scene engine", () => {
+  it("builds the legal reading list from every scene without duplicate clauses", () => {
+    const references = listLegalReferences();
+    expect(references).toHaveLength(16);
+    expect(new Set(references.flatMap(reference => reference.scenes.map(scene => scene.scenarioId))).size).toBe(20);
+    expect(references.find(reference => reference.clause === "п. 10")?.applications).toHaveLength(3);
+    expect(references.every(reference => reference.url.startsWith("https://publication.pravo.gov.ru/Document/View/"))).toBe(true);
+  });
   it("validates independent escalation and reaction vectors for every scene", () => {
     const scenes = loadAllScenarios();
     expect(scenes).toHaveLength(20);

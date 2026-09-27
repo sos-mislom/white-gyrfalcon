@@ -166,6 +166,7 @@ export class VoiceSession {
     private onText: (text: string, interrupted: boolean) => void,
     private onStatus: (status: string) => void,
     private onPartial?: (text: string) => void,
+    private onFatal?: (message: string) => void,
   ) {}
 
   async start() {
@@ -185,8 +186,9 @@ export class VoiceSession {
           return;
         }
         if (error === "speech_started") {
-          this.nativeSilenceSince = undefined;
-          this.clearSilenceTimer();
+          // Android may report a new speech start for background noise while
+          // restarting its recognizer. Keep the existing two-second deadline
+          // until an actual partial transcript confirms another phrase.
           return;
         }
         if (error === "speech_ended") {
@@ -196,21 +198,24 @@ export class VoiceSession {
         }
         if (error) {
           if (error === "microphone_permission_denied") {
-            this.onStatus("Разрешите доступ к микрофону в настройках Android.");
-            void this.stop();
+            const message = "Разрешите доступ к микрофону в настройках Android.";
+            this.onStatus(message);
+            this.onFatal?.(message);
+            void this.stop(false);
             return;
           }
+          const hadPartial = Boolean(this.nativePartial || this.nativeLongestPartial);
           this.commitNativePartial();
-          if (this.transcript) this.scheduleNativeFlush();
+          if (this.transcript && (hadPartial || !this.silenceTimer)) this.scheduleNativeFlush();
           else if (error !== "recognition_error_7") this.onStatus("Речь не распознана. Скажите фразу ещё раз.");
         } else if (!done) {
           const partial = text.trim();
           if (partial) {
             this.clearSilenceTimer();
+            this.nativeSilenceSince = undefined;
             this.nativePartial = partial;
             if (partial.length > this.nativeLongestPartial.length) this.nativeLongestPartial = partial;
             this.onPartial?.(`${this.transcript} ${partial}`.trim().slice(0, 500));
-            if (this.nativeSilenceSince !== undefined) this.scheduleNativeFlush();
           }
         } else {
           const final = text.trim();
@@ -289,10 +294,10 @@ export class VoiceSession {
           "audio-capture",
         ].includes(event.error)
       ) {
-        this.onStatus(
-          `Распознавание недоступно (${event.error}). Введите ответ текстом.`,
-        );
-        void this.stop();
+        const message = `Распознавание недоступно (${event.error}). Введите ответ текстом.`;
+        this.onStatus(message);
+        this.onFatal?.(message);
+        void this.stop(false);
       }
     };
     this.vad = await MicVAD.new({

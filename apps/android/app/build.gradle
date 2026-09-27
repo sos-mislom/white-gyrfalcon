@@ -18,8 +18,8 @@ android {
         applicationId 'ru.vsm.trainer'
         minSdk 26
         targetSdk 36
-        versionCode 8
-        versionName '0.6.0'
+        versionCode 11
+        versionName '0.6.3'
         buildConfigField 'String', 'STAND_URL', '"' + standUrl + '"'
         buildConfigField 'String', 'MOBILE_ACCESS_TOKEN', '"' + mobileToken + '"'
     }

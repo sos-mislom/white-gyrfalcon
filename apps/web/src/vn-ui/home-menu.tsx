@@ -5,26 +5,29 @@ import Image from "next/image";
 import { getScenario, listScenarios, type ScenarioSummaryDto } from "@vsm/simulation-core";
 import type { SessionStateDto } from "@vsm/api-contracts";
 import { StandRadar, profileAxes, standOverall } from "./stand-radar";
+import { LegalLibrary } from "./legal-library";
 
-type Tab = "scenes" | "history" | "ranking" | "profile";
+type Tab = "scenes" | "history" | "ranking" | "profile" | "rules";
 type Filter = "all" | "character" | "environment";
 
-function Icon({ kind, size = 22 }: { kind: "train" | "ticket" | "medal" | "profile" | "search" | "arrow" | "shuffle"; size?: number }) {
+function Icon({ kind, size = 22 }: { kind: "train" | "ticket" | "medal" | "profile" | "book" | "search" | "arrow" | "shuffle"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
   if (kind === "train") return <svg {...common}><path d="M6 18V5.5A2.5 2.5 0 0 1 8.5 3h7A2.5 2.5 0 0 1 18 5.5V18H6Z"/><path d="M6 13h12M9 17h.01M15 17h.01M8 21l2-3m6 0 2 3M9 7h6"/></svg>;
   if (kind === "ticket") return <svg {...common}><path d="M3 8h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4V8Z"/><path d="M12 8v10" strokeDasharray="2 2"/></svg>;
   if (kind === "medal") return <svg {...common}><path d="m8 3 4 3 4-3M8 3 6 8l2 3m8-8 2 5-2 3"/><circle cx="12" cy="15" r="5"/><path d="m12 12.5.8 1.7 1.9.2-1.4 1.3.4 1.9-1.7-.9-1.7.9.4-1.9-1.4-1.3 1.9-.2.8-1.7Z"/></svg>;
   if (kind === "profile") return <svg {...common}><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>;
+  if (kind === "book") return <svg {...common}><path d="M12 6.5C9.6 4.9 6.9 4.4 3 5v13c3.9-.6 6.6-.1 9 1.5 2.4-1.6 5.1-2.1 9-1.5V5c-3.9-.6-6.6-.1-9 1.5Zm0 0v13"/></svg>;
   if (kind === "search") return <svg {...common}><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>;
   if (kind === "shuffle") return <svg {...common}><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c1.7 0 2.8-1.2 3.7-2.7M13.3 9.7C14.2 8.2 15.3 7 17 7h3m-3-3 3 3-3 3"/></svg>;
   return <svg {...common}><path d="M4 12h16m-6-6 6 6-6 6"/></svg>;
 }
 
-const tabs: { key: Tab; label: string; icon: "train" | "ticket" | "medal" | "profile" }[] = [
+const tabs: { key: Tab; label: string; icon: "train" | "ticket" | "medal" | "profile" | "book" }[] = [
   { key: "scenes", label: "Сцены", icon: "train" },
   { key: "history", label: "История", icon: "ticket" },
   { key: "ranking", label: "Рейтинг", icon: "medal" },
   { key: "profile", label: "Профиль", icon: "profile" },
+  { key: "rules", label: "Правила", icon: "book" },
 ];
 function score(session: SessionStateDto) {
   return standOverall(session);
@@ -124,6 +127,7 @@ export function HomeMenu({ ready, busy, history, featuredId, onSelect, onRandom 
       {tab === "history" && <section className="vn-tab-content"><h2>История</h2>{finished.length ? <div className="vn-history-list">{[...finished].reverse().map((session, index) => <button className="vn-history-item" key={session.id} type="button" disabled={!ready || busy} onClick={() => onSelect(session.scenarioId)}><span className="vn-history-index">{String(finished.length - index).padStart(2, "0")}</span><span><strong>{getScenario(session.scenarioId)?.menu_label ?? "Смена"}</strong><small>{session.outcome === "abandoned" ? "Прервано · без оценки" : `${session.outcome === "resolved" ? "Разрешено" : "Не разрешено"} · ${score(session)} баллов`}</small></span><Icon kind="arrow" size={18}/></button>)}</div> : <div className="vn-empty-state"><button type="button" onClick={() => setTab("scenes")}>К сценам <Icon kind="arrow" size={18}/></button></div>}</section>}
       {tab === "ranking" && <section className="vn-tab-content"><h2>Рейтинг</h2>{sorted.length ? <div className="vn-ranking-list">{sorted.slice(0,12).map((session,index) => <div className="vn-ranking-item" key={session.id}><span className="vn-ranking-place">{String(index + 1).padStart(2,"0")}</span><span><strong>{getScenario(session.scenarioId)?.menu_label ?? "Смена"}</strong><small>{session.outcome === "resolved" ? "Решено" : "Не решено"}</small></span><b>{score(session)}</b></div>)}</div> : <div className="vn-empty-state"><button type="button" onClick={() => setTab("scenes")}>К сценам <Icon kind="arrow" size={18}/></button></div>}</section>}
       {tab === "profile" && <section className="vn-tab-content"><h2>Профиль</h2>{portrait.length ? <><div className="vn-profile-summary"><Image src="/visual-novel/falcon_mark.webp" alt="" width={52} height={52} unoptimized /><span><strong>Портрет решений</strong><small>{assessed.length} {assessed.length === 1 ? "завершённая смена" : "завершённых смен"}</small></span></div><div className="vn-profile-insights"><div><small>СИЛЬНАЯ СТОРОНА</small><strong>{strongest?.label}</strong></div><div><small>ТРЕБУЕТ ВНИМАНИЯ</small><strong>{growth?.label}</strong></div></div><StandRadar axes={portrait} id="profile-radar" /><p className="vn-profile-footnote">Средние показатели игровых решений.</p></> : <div className="vn-empty-state"><button type="button" onClick={() => setTab("scenes")}>К сценам <Icon kind="arrow" size={18}/></button></div>}</section>}
+      {tab === "rules" && <LegalLibrary />}
     </div>
     <nav className="vn-home-nav" aria-label="Разделы">{tabs.map((item) => <button key={item.key} type="button" className={tab === item.key ? "is-active" : ""} aria-current={tab === item.key ? "page" : undefined} onClick={() => setTab(item.key)}><Icon kind={item.icon} size={22}/><small>{item.label}</small></button>)}</nav>
   </div>;
