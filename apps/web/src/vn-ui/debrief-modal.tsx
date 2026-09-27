@@ -4,6 +4,7 @@ import type { Ref } from "react";
 import type { FreeformActionResultDto, SessionStateDto } from "@vsm/api-contracts";
 import { StandRadar, standAxes, standOverall } from "./stand-radar";
 import { getScenario } from "@vsm/simulation-core";
+import { debriefCopy } from "./debrief-copy";
 
 interface DebriefModalProps {
   session: SessionStateDto;
@@ -17,13 +18,12 @@ interface DebriefModalProps {
 }
 
 export function DebriefModal({ session, reply, feedback, disabled, onRestart, onMenu, characterName = "Пассажир", titleRef }: DebriefModalProps) {
-  const success = session.outcome === "resolved";
   const axes = standAxes(session, feedback);
   const measured = axes.filter((_, index) => index !== 3 && index !== 5);
   const strongest = measured.reduce((a, b) => a.value >= b.value ? a : b);
   const overall = standOverall(session, feedback);
   const style = overall === 0 ? "Без действий" : strongest.label;
-  const title = success ? "Смена завершена" : session.outcome === "abandoned" ? "Сцена прервана" : "Ситуация не разрешена";
+  const { title, detail } = debriefCopy(session);
   const norms = getScenario(session.scenarioId)?.legal_basis ?? [];
   const share = async () => {
     const text = `Белый кречет · ${title}\n${overall} баллов · ${style}`;
@@ -35,7 +35,7 @@ export function DebriefModal({ session, reply, feedback, disabled, onRestart, on
   return (
     <section className="vn-debrief-card" aria-labelledby="debrief-title">
       <div className="vn-debrief-top"><span className="vn-debrief-kicker">ИТОГ СМЕНЫ</span><span className="vn-debrief-star" aria-hidden="true">✧</span></div>
-      <div className="vn-debrief-heading"><span className="vn-debrief-number">{overall}<small>/100</small></span><div><h2 id="debrief-title" tabIndex={-1} ref={titleRef}>{title}</h2><p>{success ? "Вы нашли путь к решению." : session.outcome === "abandoned" ? "Ситуация осталась без решения." : "Решение не было найдено вовремя."}</p></div></div>
+      <div className="vn-debrief-heading"><span className="vn-debrief-number">{overall}<small>/100</small></span><div><h2 id="debrief-title" tabIndex={-1} ref={titleRef}>{title}</h2><p>{detail}</p></div></div>
       {reply && <blockquote className="vn-final-quote"><p>«{reply}»</p><cite>{characterName}</cite></blockquote>}
       <div className="vn-debrief-section-title"><span>ВАШ СТИЛЬ</span><strong>{style}</strong></div>
       <StandRadar axes={axes} id={`debrief-${session.id}`} />

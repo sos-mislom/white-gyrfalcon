@@ -23,6 +23,7 @@ export function actorDraftCanSurface(state: SessionStateDto, draft: string): boo
   const first = draft.split(/[.!?]/u)[0] ?? draft;
   const action = state.appliedActions.at(-1)?.actionId;
   if (soundsLikeEmployee(first) || repeatsEmployee(first, state.appliedActions.at(-1)?.utterance)) return false;
+  if (state.outcome !== "resolved" && claimsFinalResolution(first)) return false;
   if (forbiddenReply(scene.grounding, action, first)) return false;
   const required = action && scene.grounding?.required_terms_by_action[action];
   return !required || new RegExp(required, "iu").test(first);
@@ -35,6 +36,7 @@ export function actorIsGrounded(state: SessionStateDto, actor: ActorResponseDto,
   if (!reply || /^(?:покажите|предъявите|пройдите|обратитесь|посадка без билета|без билета посадка|я не могу вас посадить|я разрешаю)/iu.test(reply))
     return false;
   if (soundsLikeEmployee(reply) || repeatsEmployee(reply, speech)) return false;
+  if (state.outcome !== "resolved" && claimsFinalResolution(reply)) return false;
   const action = state.appliedActions.at(-1)?.actionId;
   if (actor.consequenceId !== "safety_threat" && forbiddenReply(scene.grounding, action, reply))
     return false;
@@ -48,6 +50,10 @@ export function actorIsGrounded(state: SessionStateDto, actor: ActorResponseDto,
   if (actor.consequenceId === "safety_threat" && /(?:уже\s+прибыл|арестован|задержан)/iu.test(reply))
     return false;
   return true;
+}
+
+function claimsFinalResolution(text: string): boolean {
+  return /(?:вс[её]\s+(?:в\s+порядке|хорошо|ок(?:ей)?)|(?:вопрос|проблема|ситуация)\s+(?:решен[аоы]?|решён[аоы]?|закрыт[аоы]?)|(?:мне|нам)\s+(?:больше\s+)?(?:ничего\s+не\s+нужно|помощь\s+не\s+нужна))/iu.test(text);
 }
 
 function soundsLikeEmployee(text: string): boolean {
