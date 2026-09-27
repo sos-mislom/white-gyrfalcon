@@ -10,13 +10,16 @@ import {
 import { PostgresSessionRepository } from "./postgres-session.repository";
 import { FreeformService } from "../ai/freeform.service";
 import { AiAdapterService } from "../ai/ai-adapter.service";
+import { AppConfigController, LeaderboardController, RzdIntegrationController } from "../reporting/reporting.controller";
+import { ReportingService } from "../reporting/reporting.service";
 
 @Module({
-  controllers: [SessionsController, ProfilesController],
+  controllers: [SessionsController, ProfilesController, AppConfigController, LeaderboardController, RzdIntegrationController],
   providers: [
     SessionsService,
     FreeformService,
     AiAdapterService,
+    ReportingService,
     {
       provide: SessionRepository,
       useFactory: () => {
