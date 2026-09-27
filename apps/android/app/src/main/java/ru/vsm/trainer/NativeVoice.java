@@ -182,7 +182,10 @@ public final class NativeVoice {
                 }
                 @Override public void onRmsChanged(float rmsdB) {}
                 @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() { Log.i("VsmVoice", "asr_speech_ended"); }
+                @Override public void onEndOfSpeech() {
+                    Log.i("VsmVoice", "asr_speech_ended");
+                    emit("", false, "speech_ended");
+                }
                 @Override public void onError(int error) {
                     Log.i("VsmVoice", "asr_error=" + error);
                     listening = false;

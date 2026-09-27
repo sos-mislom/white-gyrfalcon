@@ -158,6 +158,65 @@ it("keeps the beginning when Android only finalizes the tail or reports no match
     vi.unstubAllGlobals();
   }
 });
+it("sends Android dictation two seconds after speech ends even without a final result", async () => {
+  vi.useFakeTimers();
+  const sent = vi.fn();
+  const native = {
+    canRecognize: () => true,
+    startListening: vi.fn(),
+    stopListening: vi.fn(),
+    stopSpeech: vi.fn(),
+  };
+  const browser = { VsmVoice: native, speechSynthesis: { cancel: vi.fn() }, setTimeout } as unknown as Window & {
+    __vsmNativeSpeech?: (text: string, done: boolean, error: string) => void;
+  };
+  vi.stubGlobal("window", browser);
+  const voice = new VoiceSession(sent, () => {});
+  try {
+    await voice.start();
+    browser.__vsmNativeSpeech?.("", false, "speech_started");
+    browser.__vsmNativeSpeech?.("Проверьте билет, пожалуйста", false, "");
+    browser.__vsmNativeSpeech?.("", false, "speech_ended");
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(sent).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(sent).toHaveBeenCalledExactlyOnceWith("Проверьте билет, пожалуйста", false);
+  } finally {
+    await voice.stop();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
+it("does not restart the two-second timer when Android finalizes the phrase", async () => {
+  vi.useFakeTimers();
+  const sent = vi.fn();
+  const native = {
+    canRecognize: () => true,
+    startListening: vi.fn(),
+    stopListening: vi.fn(),
+    stopSpeech: vi.fn(),
+  };
+  const browser = { VsmVoice: native, speechSynthesis: { cancel: vi.fn() }, setTimeout } as unknown as Window & {
+    __vsmNativeSpeech?: (text: string, done: boolean, error: string) => void;
+  };
+  vi.stubGlobal("window", browser);
+  const voice = new VoiceSession(sent, () => {});
+  try {
+    await voice.start();
+    browser.__vsmNativeSpeech?.("Проверьте билет", false, "");
+    browser.__vsmNativeSpeech?.("", false, "speech_ended");
+    await vi.advanceTimersByTimeAsync(1000);
+    browser.__vsmNativeSpeech?.("Проверьте билет", true, "");
+    await vi.advanceTimersByTimeAsync(999);
+    expect(sent).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(sent).toHaveBeenCalledExactlyOnceWith("Проверьте билет", false);
+  } finally {
+    await voice.stop();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
 it("keeps browser dictation open through a short pause between sentences", async () => {
   vi.useFakeTimers();
   const sent = vi.fn();
@@ -203,8 +262,8 @@ it("retains browser interim text when recognition ends without a final result", 
   let speechStart: (() => void) | undefined;
   let speechEnd: (() => void) | undefined;
   vi.mocked(MicVAD.new).mockImplementation(async (options) => {
-    speechStart = options.onSpeechStart;
-    speechEnd = options.onSpeechEnd;
+    speechStart = () => options?.onSpeechStart?.();
+    speechEnd = () => { void options?.onSpeechEnd?.(new Float32Array(0)); };
     return { start: async () => {}, destroy: async () => {} } as unknown as MicVAD;
   });
   class Recognition {

@@ -102,6 +102,7 @@ export class VoiceSession {
   private transcript = "";
   private nativePartial = "";
   private nativeLongestPartial = "";
+  private nativeSilenceSince?: number;
   private browserInterim = "";
   private silenceTimer?: ReturnType<typeof setTimeout>;
   private browserSilenceReady = false;
@@ -129,7 +130,13 @@ export class VoiceSession {
           return;
         }
         if (error === "speech_started") {
+          this.nativeSilenceSince = undefined;
           this.clearSilenceTimer();
+          return;
+        }
+        if (error === "speech_ended") {
+          this.nativeSilenceSince ??= Date.now();
+          if (this.transcript || this.nativePartial) this.scheduleNativeFlush();
           return;
         }
         if (error) {
@@ -139,7 +146,7 @@ export class VoiceSession {
             return;
           }
           this.commitNativePartial();
-          if (this.transcript) this.scheduleSilenceFlush();
+          if (this.transcript) this.scheduleNativeFlush();
           else if (error !== "recognition_error_7") this.onStatus("Речь не распознана. Скажите фразу ещё раз.");
         } else if (!done) {
           const partial = text.trim();
@@ -148,6 +155,7 @@ export class VoiceSession {
             this.nativePartial = partial;
             if (partial.length > this.nativeLongestPartial.length) this.nativeLongestPartial = partial;
             this.onPartial?.(`${this.transcript} ${partial}`.trim().slice(0, 500));
+            if (this.nativeSilenceSince !== undefined) this.scheduleNativeFlush();
           }
         } else {
           const final = text.trim();
@@ -164,7 +172,7 @@ export class VoiceSession {
           if (chosen) {
             this.transcript = `${this.transcript} ${chosen}`.trim().slice(0, 500);
             this.onPartial?.(this.transcript);
-            this.scheduleSilenceFlush();
+            this.scheduleNativeFlush();
           }
         }
         if (done && this.enabled)
@@ -296,10 +304,18 @@ export class VoiceSession {
     this.silenceTimer = setTimeout(() => this.flushTranscript(), 2000);
   }
 
+  private scheduleNativeFlush() {
+    this.clearSilenceTimer();
+    const elapsed = this.nativeSilenceSince === undefined ? 0 : Date.now() - this.nativeSilenceSince;
+    this.silenceTimer = setTimeout(() => this.flushTranscript(), Math.max(0, 2000 - elapsed));
+  }
+
   private flushTranscript() {
     this.clearSilenceTimer();
+    if (this.native && this.nativePartial) this.commitNativePartial();
     const text = this.transcript.trim();
     this.transcript = "";
+    this.nativeSilenceSince = undefined;
     if (this.enabled && text) this.onText(text.slice(0, 500), this.interrupted);
     this.interrupted = false;
   }
